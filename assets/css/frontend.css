@@ -1,0 +1,158 @@
+/* 101-WP Frontend Styles */
+
+.wp-101-list {
+    margin: 40px 0;
+}
+
+.wp-101-intro {
+    margin-bottom: 40px;
+}
+
+.wp-101-category {
+    margin-bottom: 40px;
+}
+
+.wp-101-category-title {
+    font-size: 1.75em;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ddd;
+}
+
+.wp-101-items {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.wp-101-item {
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    transition: box-shadow 0.2s ease;
+}
+
+.wp-101-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.wp-101-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.wp-101-status-icon {
+    font-size: 1.2em;
+}
+
+.wp-101-item-title {
+    margin: 0;
+    font-size: 1.25em;
+    flex: 1;
+}
+
+.wp-101-progress {
+    color: #6b7280;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.wp-101-item-content {
+    margin: 15px 0;
+    color: #4b5563;
+}
+
+.wp-101-item-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Sub-items */
+.wp-101-sub-items {
+    list-style: none;
+    margin: 15px 0 0 0;
+    padding: 0;
+}
+
+.wp-101-sub-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.wp-101-sub-item:last-child {
+    border-bottom: none;
+}
+
+.wp-101-sub-icon {
+    font-size: 1em;
+    flex-shrink: 0;
+}
+
+.wp-101-sub-title {
+    flex: 1;
+}
+
+.wp-101-sub-item.completed .wp-101-sub-title {
+    text-decoration: line-through;
+    color: #9ca3af;
+}
+
+.wp-101-sub-date {
+    color: #9ca3af;
+    font-size: 0.875em;
+}
+
+/* Completion date */
+.wp-101-completion-date {
+    margin-top: 10px;
+    font-size: 0.875em;
+    color: #059669;
+    font-style: italic;
+}
+
+/* Status-specific styles */
+.wp-101-item.wp-101-status-complete {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.wp-101-item.wp-101-status-underway {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.wp-101-item.wp-101-status-failed {
+    background: #fef2f2;
+    border-color: #fecaca;
+    opacity: 0.7;
+}
+
+.wp-101-item.wp-101-status-failed .wp-101-item-title {
+    text-decoration: line-through;
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+    .wp-101-item-header {
+        flex-wrap: wrap;
+    }
+
+    .wp-101-progress {
+        flex-basis: 100%;
+        margin-top: 5px;
+    }
+
+    .wp-101-sub-item {
+        flex-wrap: wrap;
+    }
+
+    .wp-101-sub-date {
+        flex-basis: 100%;
+        margin-left: 30px;
+    }
+}
