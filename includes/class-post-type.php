@@ -14,6 +14,9 @@ class WP_101_Post_Type {
      */
     public static function init() {
         add_action('init', [__CLASS__, 'register_post_type']);
+        add_action('init', [__CLASS__, 'register_taxonomies']);
+        add_shortcode('daysleft', [__CLASS__, 'days_left_shortcode']);
+        add_shortcode('expirationdate', [__CLASS__, 'expiration_date_shortcode']);
     }
 
     /**
@@ -68,6 +71,37 @@ class WP_101_Post_Type {
     }
 
     /**
+     * Register taxonomies
+     */
+    public static function register_taxonomies() {
+        $labels = [
+            'name'              => _x('Item Categories', 'taxonomy general name', '101-wp'),
+            'singular_name'     => _x('Item Category', 'taxonomy singular name', '101-wp'),
+            'search_items'      => __('Search Item Categories', '101-wp'),
+            'all_items'         => __('All Item Categories', '101-wp'),
+            'parent_item'       => __('Parent Item Category', '101-wp'),
+            'parent_item_colon' => __('Parent Item Category:', '101-wp'),
+            'edit_item'         => __('Edit Item Category', '101-wp'),
+            'update_item'       => __('Update Item Category', '101-wp'),
+            'add_new_item'      => __('Add New Item Category', '101-wp'),
+            'new_item_name'     => __('New Item Category Name', '101-wp'),
+            'menu_name'         => __('Item Categories', '101-wp'),
+        ];
+
+        $args = [
+            'hierarchical'      => true,
+            'labels'            => $labels,
+            'show_ui'           => true,
+            'show_admin_column' => false,
+            'show_in_rest'      => true,
+            'query_var'         => true,
+            'rewrite'           => ['slug' => 'item-category'],
+        ];
+
+        register_taxonomy('wp_101_item_category', ['wp_101_list'], $args);
+    }
+
+    /**
      * Get the active 101 list
      *
      * @return WP_Post|null The active list post object or null
@@ -116,5 +150,75 @@ class WP_101_Post_Type {
     public static function is_list_complete($post_id) {
         $status = get_post_meta($post_id, '_wp_101_status', true);
         return $status === 'complete';
+    }
+
+    /**
+     * Shortcode to display days left in current 101 list post
+     *
+     * @param array $atts Shortcode attributes
+     * @return string The days left message or empty string
+     */
+    public static function days_left_shortcode($atts) {
+        global $post;
+
+        // Only work inside 101 List posts
+        if (!$post || get_post_type($post) !== 'wp_101_list') {
+            return '';
+        }
+
+        // If not published, return "Draft"
+        if ($post->post_status !== 'publish') {
+            return __('Draft', '101-wp');
+        }
+
+        $start_date = $post->post_date;
+        $end_date = self::calculate_end_date($start_date);
+
+        $now = new DateTime();
+        $end = new DateTime($end_date);
+        $diff = $now->diff($end);
+
+        if ($diff->invert) {
+            return __('The list has ended.', '101-wp');
+        }
+
+        return sprintf(
+            _n('%d day left', '%d days left', $diff->days, '101-wp'),
+            $diff->days
+        );
+    }
+
+    /**
+     * Shortcode to display expiration date in current 101 list post
+     *
+     * @param array $atts Shortcode attributes
+     * @return string The expiration date or empty string
+     */
+    public static function expiration_date_shortcode($atts) {
+        global $post;
+
+        // Only work inside 101 List posts
+        if (!$post || get_post_type($post) !== 'wp_101_list') {
+            return '';
+        }
+
+        // Draft: calculate from today
+        if ($post->post_status === 'draft') {
+            $start = new DateTime();
+            $end_date = self::calculate_end_date($start->format('Y-m-d H:i:s'));
+            return date_i18n('F j, Y', strtotime($end_date));
+        }
+
+        // Future (scheduled): calculate from scheduled publication date
+        if ($post->post_status === 'future') {
+            $start_date = $post->post_date;
+            $end_date = self::calculate_end_date($start_date);
+            return date_i18n('F j, Y', strtotime($end_date));
+        }
+
+        // Published: calculate from publication date
+        $start_date = $post->post_date;
+        $end_date = self::calculate_end_date($start_date);
+        return date_i18n('F j, Y', strtotime($end_date));
     }
 }

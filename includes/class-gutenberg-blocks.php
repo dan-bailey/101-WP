@@ -15,6 +15,8 @@ class WP_101_Gutenberg_Blocks {
     public static function init() {
         add_action('init', [__CLASS__, 'register_blocks']);
         add_action('enqueue_block_editor_assets', [__CLASS__, 'enqueue_block_editor_assets']);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_frontend_assets']);
+        add_filter('script_loader_tag', [__CLASS__, 'add_echarts_integrity'], 10, 2);
     }
 
     /**
@@ -58,6 +60,29 @@ class WP_101_Gutenberg_Blocks {
     }
 
     /**
+     * Enqueue frontend assets
+     */
+    public static function enqueue_frontend_assets() {
+        // Check if the current page has the progress block
+        if (has_block('wp-101/current-progress')) {
+            wp_enqueue_script(
+                'echarts',
+                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
+                [],
+                '5.4.3',
+                true
+            );
+
+            wp_enqueue_style(
+                'wp-101-blocks-style',
+                WP_101_PLUGIN_URL . 'assets/css/blocks.css',
+                [],
+                WP_101_VERSION
+            );
+        }
+    }
+
+    /**
      * Render the Current Progress block
      */
     public static function render_current_progress_block($attributes) {
@@ -91,22 +116,6 @@ class WP_101_Gutenberg_Blocks {
 
         // Generate unique ID for this chart
         $chart_id = 'wp-101-chart-' . uniqid();
-
-        // Enqueue eCharts
-        wp_enqueue_script(
-            'echarts',
-            'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
-            [],
-            '5.4.3',
-            true
-        );
-
-        wp_enqueue_style(
-            'wp-101-blocks-style',
-            WP_101_PLUGIN_URL . 'assets/css/blocks.css',
-            [],
-            WP_101_VERSION
-        );
 
         // Build the chart initialization script
         $chart_data = [
@@ -199,7 +208,7 @@ class WP_101_Gutenberg_Blocks {
                         labelLine: {
                             show: false
                         },
-                        data: <?php echo json_encode($chart_data); ?>
+                        data: <?php echo wp_json_encode($chart_data); ?>
                     }]
                 };
 
@@ -257,9 +266,24 @@ class WP_101_Gutenberg_Blocks {
         }
 
         return [
-            'title' => $active_list->post_title,
+            'title' => esc_js($active_list->post_title),
             'totalItems' => is_array($items) ? count($items) : 0,
             'statusCounts' => $status_counts
         ];
+    }
+
+    /**
+     * Add integrity attribute to eCharts CDN script
+     */
+    public static function add_echarts_integrity($tag, $handle) {
+        if ($handle === 'echarts') {
+            // Add SRI hash and crossorigin attribute for CDN security
+            $tag = str_replace(
+                ' src=',
+                ' integrity="sha384-ovnTTVxK2au429glRSILIHFiONHAF1PSmucWRQc/Z9nH2O0NrUcbf9yRqpK7K8LE" crossorigin="anonymous" src=',
+                $tag
+            );
+        }
+        return $tag;
     }
 }

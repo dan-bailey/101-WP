@@ -62,6 +62,37 @@ class WP_101_Meta_Boxes {
                 </div>
             <?php endif; ?>
 
+            <!-- Sort and Filter Controls -->
+            <div class="wp-101-controls">
+                <div class="wp-101-sort-controls">
+                    <label for="wp-101-sort-by"><?php _e('Sort by:', '101-wp'); ?></label>
+                    <select id="wp-101-sort-by">
+                        <option value="order"><?php _e('Default Order', '101-wp'); ?></option>
+                        <option value="title"><?php _e('Title', '101-wp'); ?></option>
+                        <option value="category"><?php _e('Category', '101-wp'); ?></option>
+                        <option value="status"><?php _e('Status', '101-wp'); ?></option>
+                    </select>
+                </div>
+                <div class="wp-101-filter-controls">
+                    <label for="wp-101-filter-category"><?php _e('Filter by category:', '101-wp'); ?></label>
+                    <select id="wp-101-filter-category">
+                        <option value=""><?php _e('All Categories', '101-wp'); ?></option>
+                        <?php
+                        $categories = get_terms([
+                            'taxonomy' => 'wp_101_item_category',
+                            'hide_empty' => false,
+                        ]);
+                        foreach ($categories as $category):
+                        ?>
+                            <option value="<?php echo esc_attr($category->term_id); ?>">
+                                <?php echo esc_html($category->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                        <option value="0"><?php _e('Uncategorized', '101-wp'); ?></option>
+                    </select>
+                </div>
+            </div>
+
             <div id="wp-101-items-container">
                 <?php
                 if (!empty($items)) {
@@ -76,6 +107,9 @@ class WP_101_Meta_Boxes {
                 <div class="wp-101-add-item-wrapper">
                     <button type="button" class="button button-secondary wp-101-add-item">
                         <?php _e('+ Add Item', '101-wp'); ?>
+                    </button>
+                    <button type="button" class="button button-secondary wp-101-bulk-add-items">
+                        <?php _e('+ Bulk Add Items', '101-wp'); ?>
                     </button>
                     <span class="wp-101-item-count">
                         <?php
@@ -92,6 +126,54 @@ class WP_101_Meta_Boxes {
         <script type="text/template" id="wp-101-item-template">
             <?php self::render_item_accordion('{{INDEX}}', [], false); ?>
         </script>
+
+        <!-- Bulk Add Modal -->
+        <div id="wp-101-bulk-add-modal" style="display:none;">
+            <div class="wp-101-modal-content">
+                <h2><?php _e('Bulk Add Items', '101-wp'); ?></h2>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="wp-101-bulk-category"><?php _e('Category', '101-wp'); ?></label></th>
+                        <td>
+                            <?php
+                            $categories = get_terms([
+                                'taxonomy' => 'wp_101_item_category',
+                                'hide_empty' => false,
+                            ]);
+                            ?>
+                            <select id="wp-101-bulk-category" class="widefat">
+                                <option value=""><?php _e('No category', '101-wp'); ?></option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo esc_attr($category->term_id); ?>">
+                                        <?php echo esc_html($category->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="wp-101-bulk-count"><?php _e('Number of Items', '101-wp'); ?></label></th>
+                        <td>
+                            <input type="number"
+                                   id="wp-101-bulk-count"
+                                   min="1"
+                                   max="101"
+                                   value="5"
+                                   class="small-text" />
+                            <p class="description"><?php _e('How many items to add', '101-wp'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                <div class="wp-101-modal-actions">
+                    <button type="button" class="button button-primary wp-101-bulk-add-confirm">
+                        <?php _e('Add Items', '101-wp'); ?>
+                    </button>
+                    <button type="button" class="button wp-101-bulk-add-cancel">
+                        <?php _e('Cancel', '101-wp'); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
         <?php
     }
 
@@ -113,11 +195,23 @@ class WP_101_Meta_Boxes {
 
         $item = wp_parse_args($item, $defaults);
         $disabled_attr = $disabled ? 'disabled' : '';
+
+        // Get category name for display
+        $category_name = __('Uncategorized', '101-wp');
+        if (!empty($item['category'])) {
+            $term = get_term($item['category'], 'wp_101_item_category');
+            if ($term && !is_wp_error($term)) {
+                $category_name = $term->name;
+            }
+        }
         ?>
-        <div class="wp-101-item" data-index="<?php echo esc_attr($index); ?>">
+        <div class="wp-101-item" data-index="<?php echo esc_attr($index); ?>" data-category-id="<?php echo esc_attr($item['category']); ?>">
             <div class="wp-101-item-header">
                 <span class="wp-101-item-number">#<?php echo esc_html($index === '{{INDEX}}' ? '' : $index + 1); ?></span>
                 <span class="wp-101-item-title-preview"><?php echo esc_html($item['title'] ?: __('New Item', '101-wp')); ?></span>
+                <span class="wp-101-item-category-badge">
+                    <?php echo esc_html($category_name); ?>
+                </span>
                 <span class="wp-101-item-status-badge wp-101-status-<?php echo esc_attr($item['status']); ?>">
                     <?php echo esc_html(self::get_status_label($item['status'])); ?>
                 </span>
@@ -156,12 +250,31 @@ class WP_101_Meta_Boxes {
                     <tr>
                         <th><label><?php _e('Category', '101-wp'); ?></label></th>
                         <td>
-                            <input type="text"
-                                   name="wp_101_items[<?php echo esc_attr($index); ?>][category]"
-                                   value="<?php echo esc_attr($item['category']); ?>"
-                                   class="widefat"
-                                   <?php echo $disabled_attr; ?> />
-                            <p class="description"><?php _e('User-defined category for organizing items', '101-wp'); ?></p>
+                            <?php
+                            $categories = get_terms([
+                                'taxonomy' => 'wp_101_item_category',
+                                'hide_empty' => false,
+                            ]);
+                            ?>
+                            <select name="wp_101_items[<?php echo esc_attr($index); ?>][category]"
+                                    class="widefat"
+                                    <?php echo $disabled_attr; ?>>
+                                <option value=""><?php _e('Select a category...', '101-wp'); ?></option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo esc_attr($category->term_id); ?>"
+                                            <?php selected($item['category'], $category->term_id); ?>>
+                                        <?php echo esc_html($category->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description">
+                                <?php
+                                printf(
+                                    __('Select a category or <a href="%s" target="_blank">add new categories</a>.', '101-wp'),
+                                    admin_url('edit-tags.php?taxonomy=wp_101_item_category&post_type=wp_101_list')
+                                );
+                                ?>
+                            </p>
                         </td>
                     </tr>
                     <tr>
@@ -382,20 +495,35 @@ class WP_101_Meta_Boxes {
 
         // Save items
         if (isset($_POST['wp_101_items'])) {
+            // Validate item count
+            $item_count = count($_POST['wp_101_items']);
+            if ($item_count > 101) {
+                return;
+            }
+
             $items = [];
 
             foreach ($_POST['wp_101_items'] as $index => $item) {
-                // Sanitize item data
+                // Validate and sanitize index
+                if (!is_numeric($index)) {
+                    continue;
+                }
+                $index = intval($index);
+                if ($index < 0) {
+                    continue;
+                }
+
+                // Sanitize item data with null coalescing
                 $sanitized_item = [
-                    'title' => sanitize_text_field($item['title']),
-                    'status' => sanitize_text_field($item['status']),
-                    'category' => sanitize_text_field($item['category']),
-                    'content' => wp_kses_post($item['content']),
-                    'tracking_mode' => sanitize_text_field($item['tracking_mode']),
-                    'target_count' => intval($item['target_count']),
-                    'current_count' => isset($item['current_count']) ? intval($item['current_count']) : 0,
+                    'title' => sanitize_text_field($item['title'] ?? ''),
+                    'status' => sanitize_text_field($item['status'] ?? 'not_started'),
+                    'category' => intval($item['category'] ?? 0), // Store term ID
+                    'content' => wp_kses_post($item['content'] ?? ''),
+                    'tracking_mode' => sanitize_text_field($item['tracking_mode'] ?? 'simple'),
+                    'target_count' => intval($item['target_count'] ?? 1),
+                    'current_count' => intval($item['current_count'] ?? 0),
                     'sub_items' => [],
-                    'completion_date' => isset($item['completion_date']) ? sanitize_text_field($item['completion_date']) : ''
+                    'completion_date' => sanitize_text_field($item['completion_date'] ?? '')
                 ];
 
                 // Handle status change to complete

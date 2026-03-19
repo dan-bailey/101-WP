@@ -13,6 +13,35 @@
     margin-bottom: 20px;
 }
 
+/* Sort and Filter Controls */
+.wp-101-controls {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    padding: 15px;
+    background: #f0f0f1;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.wp-101-sort-controls,
+.wp-101-filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wp-101-controls label {
+    font-weight: 500;
+    margin: 0;
+}
+
+.wp-101-controls select {
+    min-width: 150px;
+}
+
 .wp-101-item {
     margin-bottom: 10px;
     border: 1px solid #ddd;
@@ -36,15 +65,21 @@
 }
 
 .wp-101-item-title-preview {
-    flex: 1;
     font-weight: 500;
 }
 
+.wp-101-item-category-badge,
 .wp-101-item-status-badge {
     padding: 4px 10px;
     border-radius: 3px;
     font-size: 12px;
     font-weight: 500;
+}
+
+.wp-101-item-category-badge {
+    background: #fef3c7;
+    color: #92400e;
+    margin-right: auto;
 }
 
 .wp-101-status-not_started {
@@ -169,6 +204,41 @@
     font-weight: 500;
 }
 
+/* Bulk Add Modal */
+#wp-101-bulk-add-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wp-101-modal-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 4px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.wp-101-modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.wp-101-modal-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
 /* Responsive */
 @media screen and (max-width: 782px) {
     .wp-101-item-header {
@@ -186,5 +256,9 @@
 
     .wp-101-sub-item input[type="text"] {
         flex-basis: 100%;
+    }
+
+    .wp-101-add-item-wrapper {
+        flex-wrap: wrap;
     }
 }

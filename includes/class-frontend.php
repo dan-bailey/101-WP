@@ -71,10 +71,17 @@ class WP_101_Frontend {
 
         // First, group by category
         foreach ($items as $item) {
-            $category = !empty($item['category']) ? $item['category'] : __('Uncategorized', '101-wp');
+            // Get category name from term ID
+            $category_name = __('Uncategorized', '101-wp');
+            if (!empty($item['category'])) {
+                $term = get_term($item['category'], 'wp_101_item_category');
+                if ($term && !is_wp_error($term)) {
+                    $category_name = $term->name;
+                }
+            }
 
-            if (!isset($organized[$category])) {
-                $organized[$category] = [
+            if (!isset($organized[$category_name])) {
+                $organized[$category_name] = [
                     'underway' => [],
                     'not_started' => [],
                     'complete' => [],
@@ -83,7 +90,7 @@ class WP_101_Frontend {
             }
 
             $status = $item['status'];
-            $organized[$category][$status][] = $item;
+            $organized[$category_name][$status][] = $item;
         }
 
         // Now flatten each category with proper ordering
@@ -140,7 +147,7 @@ class WP_101_Frontend {
         // Content
         if (!empty($item['content'])) {
             $html .= '<div class="wp-101-item-content">';
-            $html .= wpautop($item['content']);
+            $html .= wpautop(wp_kses_post($item['content']));
             $html .= '</div>';
         }
 
