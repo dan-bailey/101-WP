@@ -47,7 +47,7 @@ class WP_101_Frontend {
         // Display items by category
         foreach ($items_by_category as $category => $category_items) {
             $html .= '<div class="wp-101-category">';
-            $html .= '<h2 class="wp-101-category-title">' . esc_html($category) . '</h2>';
+            $html .= '<h3 class="wp-101-category-title">' . esc_html($category) . '</h3>';
             $html .= '<div class="wp-101-items">';
 
             foreach ($category_items as $item) {
@@ -126,7 +126,7 @@ class WP_101_Frontend {
         // Title with status icon
         $html .= '<div class="wp-101-item-header">';
         $html .= '<span class="wp-101-status-icon">' . $status_icon . '</span>';
-        $html .= '<h3 class="wp-101-item-title">' . esc_html($item['title']) . '</h3>';
+        $html .= '<h4 class="wp-101-item-title">' . esc_html($item['title']) . '</h4>';
 
         // Progress indicator
         if ($item['tracking_mode'] === 'simple' && $item['target_count'] > 1) {
