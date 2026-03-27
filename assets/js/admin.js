@@ -142,13 +142,38 @@ jQuery(document).ready(function($) {
         const mode = $(this).val();
         const $item = $(this).closest('.wp-101-item');
 
-        if (mode === 'simple') {
+        if (mode === 'single') {
+            $item.find('.wp-101-simple-mode').hide();
+            $item.find('.wp-101-detailed-mode').hide();
+        } else if (mode === 'simple') {
             $item.find('.wp-101-simple-mode').show();
             $item.find('.wp-101-detailed-mode').hide();
+            // Sync visible inputs to hidden inputs when switching to simple mode
+            const currentCount = $item.find('.wp-101-current-count-visible').val();
+            const targetCount = $item.find('.wp-101-target-count-visible').val();
+            $item.find('.wp-101-current-count-hidden').val(currentCount);
+            $item.find('.wp-101-target-count-hidden').val(targetCount);
         } else {
             $item.find('.wp-101-simple-mode').hide();
             $item.find('.wp-101-detailed-mode').show();
         }
+    });
+
+    // Sync visible count inputs with hidden inputs
+    $(document).on('input change', '.wp-101-current-count-visible', function() {
+        console.log('DEBUG: current_count changed to', $(this).val());
+        const $item = $(this).closest('.wp-101-item');
+        $item.find('.wp-101-current-count-hidden').val($(this).val());
+        console.log('DEBUG: hidden current_count updated to', $item.find('.wp-101-current-count-hidden').val());
+    });
+
+    $(document).on('input change', '.wp-101-target-count-visible', function() {
+        console.log('DEBUG: target_count changed to', $(this).val());
+        const $item = $(this).closest('.wp-101-item');
+        $item.find('.wp-101-target-count-hidden').val($(this).val());
+        console.log('DEBUG: hidden target_count updated to', $item.find('.wp-101-target-count-hidden').val());
+        // Update max attribute on current_count field
+        $item.find('.wp-101-current-count-visible').attr('max', $(this).val());
     });
 
     // Add sub-item
@@ -189,10 +214,14 @@ jQuery(document).ready(function($) {
         reindexSubItems($subItems);
     });
 
-    // Update target count based on sub-items
+    // Update target count based on sub-items (for detailed mode)
     function updateTargetCount($subItems) {
         const count = $subItems.find('.wp-101-sub-item').length;
-        $subItems.siblings('.wp-101-target-count').val(count);
+        const $item = $subItems.closest('.wp-101-item');
+        $item.find('.wp-101-target-count-hidden').val(count);
+        // Also update current count based on completed sub-items
+        const completedCount = $subItems.find('input[type="checkbox"]:checked').length;
+        $item.find('.wp-101-current-count-hidden').val(completedCount);
     }
 
     // Reindex items
@@ -324,6 +353,22 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Initialize
-    reindexItems();
+    // Initialize - don't reindex on load since PHP renders with correct indexes
+    // Items are only reindexed when user adds/removes items
+
+    // Before form submission, sync all simple mode visible inputs to hidden inputs
+    $('form#post').on('submit', function() {
+        $('.wp-101-item').each(function() {
+            const $item = $(this);
+            const mode = $item.find('.wp-101-tracking-mode').val();
+
+            if (mode === 'simple') {
+                const currentCount = $item.find('.wp-101-current-count-visible').val();
+                const targetCount = $item.find('.wp-101-target-count-visible').val();
+                $item.find('.wp-101-current-count-hidden').val(currentCount);
+                $item.find('.wp-101-target-count-hidden').val(targetCount);
+                console.log('SUBMIT: Synced simple mode counts - current:', currentCount, 'target:', targetCount);
+            }
+        });
+    });
 });

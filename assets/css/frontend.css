@@ -138,7 +138,7 @@
 }
 
 .wp-101-item.wp-101-status-failed .wp-101-item-title {
-    text-decoration: line-through;
+    /* text-decoration: line-through; */
 }
 
 /* Responsive */

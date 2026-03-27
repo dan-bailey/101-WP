@@ -186,7 +186,7 @@ class WP_101_Meta_Boxes {
             'status' => 'not_started',
             'category' => '',
             'content' => '',
-            'tracking_mode' => 'simple',
+            'tracking_mode' => 'single',
             'target_count' => 1,
             'current_count' => 0,
             'sub_items' => [],
@@ -283,30 +283,43 @@ class WP_101_Meta_Boxes {
                             <select name="wp_101_items[<?php echo esc_attr($index); ?>][tracking_mode]"
                                     class="wp-101-tracking-mode"
                                     <?php echo $disabled_attr; ?>>
+                                <option value="single" <?php selected($item['tracking_mode'], 'single'); ?>><?php _e('Single Item', '101-wp'); ?></option>
                                 <option value="simple" <?php selected($item['tracking_mode'], 'simple'); ?>><?php _e('Simple Count', '101-wp'); ?></option>
                                 <option value="detailed" <?php selected($item['tracking_mode'], 'detailed'); ?>><?php _e('Detailed List', '101-wp'); ?></option>
                             </select>
-                            <p class="description"><?php _e('Simple: track by count only. Detailed: list individual sub-items.', '101-wp'); ?></p>
+                            <p class="description"><?php _e('Single: one task. Simple: track by count only. Detailed: list individual sub-items.', '101-wp'); ?></p>
+
+                            <!-- Hidden inputs to always submit count values -->
+                            <input type="hidden"
+                                   class="wp-101-current-count-hidden"
+                                   name="wp_101_items[<?php echo esc_attr($index); ?>][current_count]"
+                                   value="<?php echo esc_attr($item['current_count']); ?>" />
+                            <input type="hidden"
+                                   class="wp-101-target-count-hidden"
+                                   name="wp_101_items[<?php echo esc_attr($index); ?>][target_count]"
+                                   value="<?php echo esc_attr($item['target_count']); ?>" />
                         </td>
                     </tr>
-                    <tr class="wp-101-simple-mode" <?php echo $item['tracking_mode'] === 'detailed' ? 'style="display:none;"' : ''; ?>>
+                    <tr class="wp-101-simple-mode" <?php echo $item['tracking_mode'] !== 'simple' ? 'style="display:none;"' : ''; ?>>
                         <th><label><?php _e('Progress', '101-wp'); ?></label></th>
                         <td>
                             <input type="number"
-                                   name="wp_101_items[<?php echo esc_attr($index); ?>][current_count]"
+                                   class="wp-101-current-count-visible"
                                    value="<?php echo esc_attr($item['current_count']); ?>"
                                    min="0"
                                    max="<?php echo esc_attr($item['target_count']); ?>"
+                                   size="4"
                                    <?php echo $disabled_attr; ?> />
                             /
                             <input type="number"
-                                   name="wp_101_items[<?php echo esc_attr($index); ?>][target_count]"
+                                   class="wp-101-target-count-visible"
                                    value="<?php echo esc_attr($item['target_count']); ?>"
                                    min="1"
+                                   size="4"
                                    <?php echo $disabled_attr; ?> />
                         </td>
                     </tr>
-                    <tr class="wp-101-detailed-mode" <?php echo $item['tracking_mode'] === 'simple' ? 'style="display:none;"' : ''; ?>>
+                    <tr class="wp-101-detailed-mode" <?php echo $item['tracking_mode'] !== 'detailed' ? 'style="display:none;"' : ''; ?>>
                         <th><label><?php _e('Sub-Items', '101-wp'); ?></label></th>
                         <td>
                             <div class="wp-101-sub-items" data-item-index="<?php echo esc_attr($index); ?>">
@@ -323,10 +336,6 @@ class WP_101_Meta_Boxes {
                                     <?php _e('+ Add Sub-Item', '101-wp'); ?>
                                 </button>
                             <?php endif; ?>
-                            <input type="hidden"
-                                   name="wp_101_items[<?php echo esc_attr($index); ?>][target_count]"
-                                   value="<?php echo esc_attr($item['target_count']); ?>"
-                                   class="wp-101-target-count" />
                         </td>
                     </tr>
                     <tr>
@@ -501,7 +510,14 @@ class WP_101_Meta_Boxes {
                 return;
             }
 
+            // Get existing items to preserve data when switching modes
+            $existing_items = get_post_meta($post_id, '_wp_101_items', true);
+            if (!is_array($existing_items)) {
+                $existing_items = [];
+            }
+
             $items = [];
+            $item_counter = 0;
 
             foreach ($_POST['wp_101_items'] as $index => $item) {
                 // Validate and sanitize index
@@ -513,14 +529,28 @@ class WP_101_Meta_Boxes {
                     continue;
                 }
 
+                // Get existing item data for this index
+                $existing_item = $existing_items[$item_counter] ?? [];
+
+                // DEBUG: Log what we're receiving for all items
+                error_log("DEBUG Item $index (title: " . ($item['title'] ?? 'NO TITLE') . "): " .
+                         "tracking_mode=" . ($item['tracking_mode'] ?? 'NOT SET') .
+                         ", target_count from POST=" . ($item['target_count'] ?? 'NOT SET') .
+                         ", current_count from POST=" . ($item['current_count'] ?? 'NOT SET'));
+
                 // Sanitize item data with null coalescing
+                $target_count_value = isset($item['target_count']) && $item['target_count'] !== '' ? intval($item['target_count']) : 1;
+                if ($target_count_value < 1) {
+                    $target_count_value = 1;
+                }
+
                 $sanitized_item = [
                     'title' => sanitize_text_field($item['title'] ?? ''),
                     'status' => sanitize_text_field($item['status'] ?? 'not_started'),
                     'category' => intval($item['category'] ?? 0), // Store term ID
                     'content' => wp_kses_post($item['content'] ?? ''),
-                    'tracking_mode' => sanitize_text_field($item['tracking_mode'] ?? 'simple'),
-                    'target_count' => intval($item['target_count'] ?? 1),
+                    'tracking_mode' => sanitize_text_field($item['tracking_mode'] ?? 'single'),
+                    'target_count' => $target_count_value,
                     'current_count' => intval($item['current_count'] ?? 0),
                     'sub_items' => [],
                     'completion_date' => sanitize_text_field($item['completion_date'] ?? '')
@@ -531,32 +561,74 @@ class WP_101_Meta_Boxes {
                     $sanitized_item['completion_date'] = current_time('mysql');
                 }
 
-                // Handle sub-items
-                if (isset($item['sub_items']) && is_array($item['sub_items'])) {
-                    foreach ($item['sub_items'] as $sub_index => $sub_item) {
-                        $completed = isset($sub_item['completed']) && $sub_item['completed'] === '1';
-                        $date = isset($sub_item['date']) ? sanitize_text_field($sub_item['date']) : '';
+                // Detect mode changes
+                $old_mode = $existing_item['tracking_mode'] ?? 'single';
+                $new_mode = $sanitized_item['tracking_mode'];
+                $mode_changed = ($old_mode !== $new_mode);
 
-                        // Set date when first completed
-                        if ($completed && empty($date)) {
-                            $date = current_time('mysql');
+                // Handle tracking mode specific logic
+                if ($sanitized_item['tracking_mode'] === 'detailed') {
+                    // For detailed mode: only process sub-items, set target_count from sub-items count
+                    if (isset($item['sub_items']) && is_array($item['sub_items'])) {
+                        foreach ($item['sub_items'] as $sub_index => $sub_item) {
+                            $completed = isset($sub_item['completed']) && $sub_item['completed'] === '1';
+                            $date = isset($sub_item['date']) ? sanitize_text_field($sub_item['date']) : '';
+
+                            // Set date when first completed
+                            if ($completed && empty($date)) {
+                                $date = current_time('mysql');
+                            }
+
+                            $sanitized_item['sub_items'][] = [
+                                'title' => sanitize_text_field($sub_item['title']),
+                                'completed' => $completed,
+                                'date' => $date
+                            ];
                         }
-
-                        $sanitized_item['sub_items'][] = [
-                            'title' => sanitize_text_field($sub_item['title']),
-                            'completed' => $completed,
-                            'date' => $date
-                        ];
                     }
-
-                    // Update target count based on sub-items count
+                    // Set target_count to number of sub-items
                     $sanitized_item['target_count'] = count($sanitized_item['sub_items']);
+
+                    // Calculate current_count from completed sub-items
+                    $sanitized_item['current_count'] = 0;
+                    foreach ($sanitized_item['sub_items'] as $sub_item) {
+                        if ($sub_item['completed']) {
+                            $sanitized_item['current_count']++;
+                        }
+                    }
+                } elseif ($sanitized_item['tracking_mode'] === 'simple') {
+                    // For simple mode: use user-entered counts, remove sub-items
+                    $sanitized_item['sub_items'] = [];
+
+                    // Always use form values for simple mode
+                    // Ensure current_count doesn't exceed target_count
+                    if ($sanitized_item['current_count'] > $sanitized_item['target_count']) {
+                        $sanitized_item['current_count'] = $sanitized_item['target_count'];
+                    }
+                } else {
+                    // For single mode: preserve sub-items from existing data in case they switch back
+                    if (!empty($existing_item['sub_items'])) {
+                        $sanitized_item['sub_items'] = $existing_item['sub_items'];
+                    }
                 }
 
                 $items[] = $sanitized_item;
+                $item_counter++;
             }
 
+            // Ensure items have sequential numeric keys starting from 0
+            $items = array_values($items);
             update_post_meta($post_id, '_wp_101_items', $items);
+
+            // Sync taxonomy terms from item categories
+            $term_ids = [];
+            foreach ($items as $item) {
+                if (!empty($item['category'])) {
+                    $term_ids[] = intval($item['category']);
+                }
+            }
+            $term_ids = array_unique($term_ids);
+            wp_set_object_terms($post_id, $term_ids, 'wp_101_item_category');
 
             // Update list status
             self::update_list_status($post_id, $items, $post->post_date);
