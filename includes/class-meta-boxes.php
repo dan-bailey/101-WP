@@ -48,6 +48,19 @@ class WP_101_Meta_Boxes {
         wp_nonce_field('wp_101_save_items', 'wp_101_items_nonce');
 
         $items = get_post_meta($post->ID, '_wp_101_items', true);
+
+        // Check if list is past end date and update status if needed
+        if ($post->post_status === 'publish') {
+            $end_date = WP_101_Post_Type::calculate_end_date($post->post_date);
+            $now = current_time('mysql');
+            if ($now > $end_date) {
+                $current_status = get_post_meta($post->ID, '_wp_101_status', true);
+                if ($current_status !== 'complete') {
+                    update_post_meta($post->ID, '_wp_101_status', 'complete');
+                }
+            }
+        }
+
         $is_complete = WP_101_Post_Type::is_list_complete($post->ID);
 
         if (!is_array($items)) {
@@ -556,9 +569,18 @@ class WP_101_Meta_Boxes {
                     'completion_date' => sanitize_text_field($item['completion_date'] ?? '')
                 ];
 
-                // Handle status change to complete
+                // Skip items with empty titles
+                if (empty($sanitized_item['title'])) {
+                    continue;
+                }
+
+                // Handle status changes
                 if ($sanitized_item['status'] === 'complete' && empty($sanitized_item['completion_date'])) {
+                    // Set completion date when marked complete
                     $sanitized_item['completion_date'] = current_time('mysql');
+                } elseif ($sanitized_item['status'] !== 'complete' && !empty($sanitized_item['completion_date'])) {
+                    // Clear completion date when changed away from complete
+                    $sanitized_item['completion_date'] = '';
                 }
 
                 // Detect mode changes

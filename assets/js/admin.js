@@ -77,6 +77,10 @@ jQuery(document).ready(function($) {
             // Set the category if selected
             if (category) {
                 $newItem.find('select[name*="[category]"]').val(category);
+                // Update the category badge
+                const categoryText = $('#wp-101-bulk-category option:selected').text();
+                $newItem.find('.wp-101-item-category-badge').text(categoryText);
+                $newItem.attr('data-category-id', category);
             }
 
             $('#wp-101-items-container').append($newItem);
@@ -165,6 +169,13 @@ jQuery(document).ready(function($) {
         const $item = $(this).closest('.wp-101-item');
         $item.find('.wp-101-current-count-hidden').val($(this).val());
         console.log('DEBUG: hidden current_count updated to', $item.find('.wp-101-current-count-hidden').val());
+
+        // Auto-complete if current equals target
+        const currentCount = parseInt($(this).val());
+        const targetCount = parseInt($item.find('.wp-101-target-count-visible').val());
+        if (currentCount >= targetCount && targetCount > 0) {
+            $item.find('.wp-101-item-status').val('complete').trigger('change');
+        }
     });
 
     $(document).on('input change', '.wp-101-target-count-visible', function() {
@@ -222,7 +233,18 @@ jQuery(document).ready(function($) {
         // Also update current count based on completed sub-items
         const completedCount = $subItems.find('input[type="checkbox"]:checked').length;
         $item.find('.wp-101-current-count-hidden').val(completedCount);
+
+        // Auto-complete if all sub-items are checked
+        if (count > 0 && completedCount >= count) {
+            $item.find('.wp-101-item-status').val('complete').trigger('change');
+        }
     }
+
+    // Handle sub-item checkbox changes
+    $(document).on('change', '.wp-101-sub-item input[type="checkbox"]', function() {
+        const $subItems = $(this).closest('.wp-101-sub-items');
+        updateTargetCount($subItems);
+    });
 
     // Reindex items
     function reindexItems() {

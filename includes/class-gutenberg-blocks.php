@@ -67,9 +67,10 @@ class WP_101_Gutenberg_Blocks {
         if (has_block('wp-101/current-progress')) {
             wp_enqueue_script(
                 'echarts',
-                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
+                '
+https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
                 [],
-                '5.4.3',
+                '6.0.0',
                 true
             );
 
