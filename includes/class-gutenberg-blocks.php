@@ -16,7 +16,6 @@ class WP_101_Gutenberg_Blocks {
         add_action('init', [__CLASS__, 'register_blocks']);
         add_action('enqueue_block_editor_assets', [__CLASS__, 'enqueue_block_editor_assets']);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_frontend_assets']);
-        add_filter('script_loader_tag', [__CLASS__, 'add_echarts_integrity'], 10, 2);
     }
 
     /**
@@ -29,7 +28,16 @@ class WP_101_Gutenberg_Blocks {
             'editor_style' => 'wp-101-blocks-editor-style',
             'style' => 'wp-101-blocks-style',
             'render_callback' => [__CLASS__, 'render_current_progress_block'],
-            'attributes' => []
+            'attributes' => [
+                'listId' => [
+                    'type' => 'number',
+                    'default' => 0
+                ],
+                'customTitle' => [
+                    'type' => 'string',
+                    'default' => ''
+                ]
+            ]
         ]);
     }
 
@@ -40,7 +48,7 @@ class WP_101_Gutenberg_Blocks {
         wp_enqueue_script(
             'wp-101-blocks-editor',
             WP_101_PLUGIN_URL . 'assets/js/blocks.js',
-            ['wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-i18n'],
+            ['wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-i18n'],
             WP_101_VERSION,
             true
         );
@@ -55,7 +63,8 @@ class WP_101_Gutenberg_Blocks {
         // Pass data to JavaScript
         wp_localize_script('wp-101-blocks-editor', 'wp101Data', [
             'hasActiveList' => self::has_active_list(),
-            'activeListData' => self::get_active_list_data()
+            'activeListData' => self::get_active_list_data(),
+            'allLists' => self::get_all_lists()
         ]);
     }
 
@@ -63,43 +72,55 @@ class WP_101_Gutenberg_Blocks {
      * Enqueue frontend assets
      */
     public static function enqueue_frontend_assets() {
-        // Check if the current page has the progress block
-        if (has_block('wp-101/current-progress')) {
-            wp_enqueue_script(
-                'echarts',
-                '
-https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
-                [],
-                '6.0.0',
-                true
-            );
+        // Always enqueue eCharts - it's needed for the progress block
+        wp_enqueue_script(
+            'echarts',
+            'https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
+            [],
+            '6.0.0',
+            true
+        );
 
-            wp_enqueue_style(
-                'wp-101-blocks-style',
-                WP_101_PLUGIN_URL . 'assets/css/blocks.css',
-                [],
-                WP_101_VERSION
-            );
-        }
+        wp_enqueue_style(
+            'wp-101-blocks-style',
+            WP_101_PLUGIN_URL . 'assets/css/blocks.css',
+            [],
+            WP_101_VERSION
+        );
     }
 
     /**
      * Render the Current Progress block
      */
     public static function render_current_progress_block($attributes) {
-        $active_list = WP_101_Post_Type::get_active_list();
+        // Get the list to display
+        $list_id = isset($attributes['listId']) ? intval($attributes['listId']) : 0;
 
-        if (!$active_list) {
-            return '<div class="wp-101-progress-block wp-101-no-active-list"><p>' .
-                   __('No active 101 list found.', '101-wp') . '</p></div>';
+        if ($list_id > 0) {
+            $list = get_post($list_id);
+            if (!$list || $list->post_type !== 'wp_101_list') {
+                $list = null;
+            }
+        } else {
+            // Default to active list if no specific list selected
+            $list = WP_101_Post_Type::get_active_list();
         }
 
-        $items = get_post_meta($active_list->ID, '_wp_101_items', true);
+        if (!$list) {
+            return '<div class="wp-101-progress-block wp-101-no-active-list"><p>' .
+                   __('No 101 list found.', '101-wp') . '</p></div>';
+        }
+
+        $items = get_post_meta($list->ID, '_wp_101_items', true);
 
         if (!is_array($items) || empty($items)) {
             return '<div class="wp-101-progress-block wp-101-no-items"><p>' .
-                   __('No items in the active list yet.', '101-wp') . '</p></div>';
+                   __('No items in the list yet.', '101-wp') . '</p></div>';
         }
+
+        // Determine the title to display
+        $custom_title = isset($attributes['customTitle']) ? trim($attributes['customTitle']) : '';
+        $display_title = !empty($custom_title) ? $custom_title : $list->post_title;
 
         // Count items by status
         $status_counts = [
@@ -147,7 +168,7 @@ https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
         ?>
         <div class="wp-101-progress-block">
             <h3 class="wp-101-progress-title">
-                <?php echo esc_html($active_list->post_title); ?>
+                <?php echo esc_html($display_title); ?>
             </h3>
             <div id="<?php echo esc_attr($chart_id); ?>" class="wp-101-chart"></div>
             <div class="wp-101-progress-stats">
@@ -169,19 +190,46 @@ https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
                     </span>
                 </div>
             </div>
+            <div class="wp-101-view-list-button-wrapper">
+                <a href="<?php echo esc_url(get_permalink($list->ID)); ?>" class="wp-101-view-list-button">
+                    <?php _e('View List', '101-wp'); ?>
+                </a>
+            </div>
         </div>
         <script>
         (function() {
+            console.log('[WP-101] Initializing chart script for <?php echo $chart_id; ?>');
+
+            var attempts = 0;
+            var maxAttempts = 50; // 5 seconds max
+
             function initChart() {
+                attempts++;
+                console.log('[WP-101] Chart init attempt #' + attempts);
+
                 if (typeof echarts === 'undefined') {
-                    setTimeout(initChart, 100);
+                    console.log('[WP-101] eCharts not loaded yet, waiting...');
+                    if (attempts < maxAttempts) {
+                        setTimeout(initChart, 100);
+                    } else {
+                        console.error('[WP-101] eCharts failed to load after ' + maxAttempts + ' attempts (5 seconds)');
+                    }
                     return;
                 }
 
+                console.log('[WP-101] eCharts loaded successfully! Version:', echarts.version);
+
                 var chartDom = document.getElementById('<?php echo $chart_id; ?>');
-                if (!chartDom) return;
+                if (!chartDom) {
+                    console.error('[WP-101] Chart container not found: <?php echo $chart_id; ?>');
+                    return;
+                }
+
+                console.log('[WP-101] Chart container found:', chartDom);
 
                 var myChart = echarts.init(chartDom);
+                console.log('[WP-101] eCharts instance created');
+
                 var option = {
                     tooltip: {
                         trigger: 'item',
@@ -214,16 +262,22 @@ https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
                 };
 
                 myChart.setOption(option);
+                console.log('[WP-101] Chart options set successfully with data:', <?php echo wp_json_encode($chart_data); ?>);
 
                 // Resize on window resize
                 window.addEventListener('resize', function() {
                     myChart.resize();
+                    console.log('[WP-101] Chart resized');
                 });
+
+                console.log('[WP-101] Chart initialization complete!');
             }
 
             if (document.readyState === 'loading') {
+                console.log('[WP-101] Document still loading, waiting for DOMContentLoaded');
                 document.addEventListener('DOMContentLoaded', initChart);
             } else {
+                console.log('[WP-101] Document already loaded, initializing immediately');
                 initChart();
             }
         })();
@@ -271,6 +325,29 @@ https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js',
             'totalItems' => is_array($items) ? count($items) : 0,
             'statusCounts' => $status_counts
         ];
+    }
+
+    /**
+     * Get all published 101 lists for dropdown
+     */
+    private static function get_all_lists() {
+        $lists = get_posts([
+            'post_type' => 'wp_101_list',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC'
+        ]);
+
+        $formatted_lists = [];
+        foreach ($lists as $list) {
+            $formatted_lists[] = [
+                'value' => $list->ID,
+                'label' => esc_js($list->post_title)
+            ];
+        }
+
+        return $formatted_lists;
     }
 
     /**

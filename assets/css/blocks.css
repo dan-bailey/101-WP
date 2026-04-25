@@ -62,6 +62,29 @@
     font-size: 1.1em;
 }
 
+.wp-101-view-list-button-wrapper {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 25px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.wp-101-view-list-button {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: #3b82f6;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.wp-101-view-list-button:hover {
+    background-color: #2563eb;
+    color: #fff;
+}
+
 /* Responsive */
 @media screen and (max-width: 768px) {
     .wp-101-chart {
