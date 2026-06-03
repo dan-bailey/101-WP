@@ -1,19 +1,13 @@
 /* Frontend styles for 101-WP blocks */
 
+/* Current Progress Block - inherits theme styling for sidebar use */
 .wp-101-progress-block {
-    padding: 30px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin: 30px 0;
+    /* Minimal styling to inherit from theme, especially GeneratePress */
 }
 
 .wp-101-progress-title {
-    margin: 0 0 25px 0;
-    font-size: 1.75em;
+    margin: 0 0 1.5em 0;
     text-align: center;
-    color: #1f2937;
 }
 
 .wp-101-chart {
@@ -38,7 +32,7 @@
 .wp-101-stat-label {
     display: block;
     font-size: 0.875em;
-    color: #6b7280;
+    opacity: 0.7;
     margin-bottom: 5px;
 }
 
@@ -46,20 +40,13 @@
     display: block;
     font-size: 1.75em;
     font-weight: bold;
-    color: #1f2937;
 }
 
 .wp-101-no-active-list,
 .wp-101-no-items {
     text-align: center;
     padding: 40px 20px;
-    color: #6b7280;
-}
-
-.wp-101-no-active-list p,
-.wp-101-no-items p {
-    margin: 0;
-    font-size: 1.1em;
+    opacity: 0.7;
 }
 
 .wp-101-view-list-button-wrapper {
@@ -108,5 +95,88 @@
 
     .wp-101-chart {
         height: 250px;
+    }
+}
+
+/* Timeframe Report Block */
+.wp-101-timeframe-report {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.wp-101-report-section {
+    margin-bottom: 2.5em;
+}
+
+.wp-101-report-section h3 {
+    font-size: 1.5em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    border-bottom: 2px solid currentColor;
+}
+
+.wp-101-report-section p {
+    margin-bottom: 0.75em;
+    line-height: 1.6;
+}
+
+.wp-101-report-overview,
+.wp-101-report-timeframe {
+    background: rgba(0, 0, 0, 0.02);
+    padding: 1.5em;
+    border-radius: 4px;
+}
+
+.wp-101-report-item {
+    margin-bottom: 1.5em;
+    padding: 1em;
+    background: rgba(0, 0, 0, 0.01);
+    border-left: 3px solid currentColor;
+    border-radius: 2px;
+}
+
+.wp-101-report-item p {
+    margin-bottom: 0.5em;
+}
+
+.wp-101-report-item p:last-child {
+    margin-bottom: 0;
+}
+
+.wp-101-report-completed .wp-101-report-item {
+    border-left-color: #10b981;
+}
+
+.wp-101-report-in-progress .wp-101-report-item {
+    border-left-color: #3b82f6;
+}
+
+.wp-101-report-failed .wp-101-report-item {
+    border-left-color: #ef4444;
+}
+
+.wp-101-no-report {
+    text-align: center;
+    padding: 60px 20px;
+    opacity: 0.7;
+}
+
+/* Responsive adjustments for report */
+@media screen and (max-width: 768px) {
+    .wp-101-timeframe-report {
+        max-width: 100%;
+    }
+
+    .wp-101-report-section h3 {
+        font-size: 1.3em;
+    }
+
+    .wp-101-report-overview,
+    .wp-101-report-timeframe {
+        padding: 1em;
+    }
+
+    .wp-101-report-item {
+        padding: 0.75em;
     }
 }

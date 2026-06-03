@@ -135,6 +135,236 @@
             return null;
         }
     });
+
+    // Register Timeframe Report Block
+    registerBlockType('wp-101/timeframe-report', {
+        title: __('101 Timeframe Report', '101-wp'),
+        description: __('Generate a snapshot report for a specific timeframe of the 101 Things list', '101-wp'),
+        icon: 'analytics',
+        category: 'widgets',
+        keywords: [__('101', '101-wp'), __('report', '101-wp'), __('timeframe', '101-wp')],
+        supports: {
+            html: false,
+            align: ['wide', 'full']
+        },
+        attributes: {
+            listId: {
+                type: 'number',
+                default: 0
+            },
+            startDate: {
+                type: 'string',
+                default: ''
+            },
+            endDate: {
+                type: 'string',
+                default: ''
+            },
+            reportContent: {
+                type: 'string',
+                default: ''
+            },
+            isGenerated: {
+                type: 'boolean',
+                default: false
+            }
+        },
+
+        edit: function(props) {
+            var attributes = props.attributes;
+            var setAttributes = props.setAttributes;
+            var allLists = wp101Data && wp101Data.allLists ? wp101Data.allLists : [];
+
+            if (!allLists || allLists.length === 0) {
+                return el(
+                    Placeholder,
+                    {
+                        icon: 'analytics',
+                        label: __('101 Timeframe Report', '101-wp'),
+                        instructions: __('No published 101 lists found. Create and publish a 101 list to use this block.', '101-wp')
+                    }
+                );
+            }
+
+            // Build dropdown options
+            var listOptions = [
+                { value: 0, label: __('Select a 101 List', '101-wp') }
+            ].concat(allLists);
+
+            // Function to generate report
+            function generateReport() {
+                if (!attributes.listId || !attributes.startDate || !attributes.endDate) {
+                    alert(__('Please select a list and enter both start and end dates.', '101-wp'));
+                    return;
+                }
+
+                // Make AJAX call to generate report
+                var data = new FormData();
+                data.append('action', 'wp_101_generate_timeframe_report');
+                data.append('nonce', wp101Data.nonce);
+                data.append('listId', attributes.listId);
+                data.append('startDate', attributes.startDate);
+                data.append('endDate', attributes.endDate);
+
+                fetch(wp101Data.ajaxUrl, {
+                    method: 'POST',
+                    body: data
+                })
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(result) {
+                    if (result.success) {
+                        setAttributes({
+                            reportContent: result.data.html,
+                            isGenerated: true
+                        });
+                    } else {
+                        alert(__('Error generating report: ', '101-wp') + (result.data.message || 'Unknown error'));
+                    }
+                })
+                .catch(function(error) {
+                    alert(__('Error generating report: ', '101-wp') + error.message);
+                });
+            }
+
+            // If report is generated, show it with edit controls
+            if (attributes.isGenerated && attributes.reportContent) {
+                return [
+                    el(InspectorControls, { key: 'inspector' },
+                        el(PanelBody, { title: __('Report Settings', '101-wp'), initialOpen: true },
+                            el(SelectControl, {
+                                label: __('Select 101 List', '101-wp'),
+                                value: attributes.listId,
+                                options: listOptions,
+                                onChange: function(value) {
+                                    setAttributes({
+                                        listId: parseInt(value),
+                                        isGenerated: false,
+                                        reportContent: ''
+                                    });
+                                }
+                            }),
+                            el(TextControl, {
+                                label: __('Start Date', '101-wp'),
+                                type: 'date',
+                                value: attributes.startDate,
+                                onChange: function(value) {
+                                    setAttributes({
+                                        startDate: value,
+                                        isGenerated: false,
+                                        reportContent: ''
+                                    });
+                                }
+                            }),
+                            el(TextControl, {
+                                label: __('End Date', '101-wp'),
+                                type: 'date',
+                                value: attributes.endDate,
+                                onChange: function(value) {
+                                    setAttributes({
+                                        endDate: value,
+                                        isGenerated: false,
+                                        reportContent: ''
+                                    });
+                                }
+                            }),
+                            el(components.Button, {
+                                isPrimary: true,
+                                onClick: generateReport
+                            }, __('Regenerate Report', '101-wp'))
+                        )
+                    ),
+                    el('div', {
+                        key: 'block',
+                        className: 'wp-101-timeframe-report',
+                        dangerouslySetInnerHTML: { __html: attributes.reportContent }
+                    })
+                ];
+            }
+
+            // Show configuration UI
+            return [
+                el(InspectorControls, { key: 'inspector' },
+                    el(PanelBody, { title: __('Report Settings', '101-wp'), initialOpen: true },
+                        el(SelectControl, {
+                            label: __('Select 101 List', '101-wp'),
+                            value: attributes.listId,
+                            options: listOptions,
+                            onChange: function(value) {
+                                setAttributes({ listId: parseInt(value) });
+                            }
+                        }),
+                        el(TextControl, {
+                            label: __('Start Date', '101-wp'),
+                            type: 'date',
+                            value: attributes.startDate,
+                            onChange: function(value) {
+                                setAttributes({ startDate: value });
+                            }
+                        }),
+                        el(TextControl, {
+                            label: __('End Date', '101-wp'),
+                            type: 'date',
+                            value: attributes.endDate,
+                            onChange: function(value) {
+                                setAttributes({ endDate: value });
+                            }
+                        }),
+                        el(components.Button, {
+                            isPrimary: true,
+                            onClick: generateReport
+                        }, __('Generate Report', '101-wp'))
+                    )
+                ),
+                el(
+                    Placeholder,
+                    {
+                        key: 'placeholder',
+                        icon: 'analytics',
+                        label: __('101 Timeframe Report', '101-wp'),
+                        instructions: __('Configure the report settings in the sidebar and click "Generate Report".', '101-wp')
+                    },
+                    el('div', { style: { marginTop: '20px' } },
+                        el(SelectControl, {
+                            label: __('Select 101 List', '101-wp'),
+                            value: attributes.listId,
+                            options: listOptions,
+                            onChange: function(value) {
+                                setAttributes({ listId: parseInt(value) });
+                            }
+                        }),
+                        el(TextControl, {
+                            label: __('Start Date', '101-wp'),
+                            type: 'date',
+                            value: attributes.startDate,
+                            onChange: function(value) {
+                                setAttributes({ startDate: value });
+                            }
+                        }),
+                        el(TextControl, {
+                            label: __('End Date', '101-wp'),
+                            type: 'date',
+                            value: attributes.endDate,
+                            onChange: function(value) {
+                                setAttributes({ endDate: value });
+                            }
+                        }),
+                        el(components.Button, {
+                            isPrimary: true,
+                            onClick: generateReport,
+                            style: { marginTop: '10px' }
+                        }, __('Generate Report', '101-wp'))
+                    )
+                )
+            ];
+        },
+
+        save: function() {
+            // Dynamic block, rendered server-side
+            return null;
+        }
+    });
 })(
     window.wp.blocks,
     window.wp.element,

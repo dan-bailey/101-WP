@@ -15,6 +15,7 @@ class WP_101_Post_Type {
     public static function init() {
         add_action('init', [__CLASS__, 'register_post_type']);
         add_action('init', [__CLASS__, 'register_taxonomies']);
+        add_action('init', [__CLASS__, 'add_to_nav_menus']);
         add_shortcode('daysleft', [__CLASS__, 'days_left_shortcode']);
         add_shortcode('expirationdate', [__CLASS__, 'expiration_date_shortcode']);
     }
@@ -56,6 +57,7 @@ class WP_101_Post_Type {
             'publicly_queryable' => true,
             'show_ui'            => true,
             'show_in_menu'       => true,
+            'show_in_nav_menus'  => true,
             'query_var'          => true,
             'rewrite'            => ['slug' => '101-list'],
             'capability_type'    => 'post',
@@ -93,12 +95,20 @@ class WP_101_Post_Type {
             'labels'            => $labels,
             'show_ui'           => true,
             'show_admin_column' => false,
+            'show_in_nav_menus' => true,
             'show_in_rest'      => true,
             'query_var'         => true,
             'rewrite'           => ['slug' => 'item-category'],
         ];
 
         register_taxonomy('wp_101_item_category', ['wp_101_list'], $args);
+    }
+
+    /**
+     * Explicitly add post type to nav menus
+     */
+    public static function add_to_nav_menus() {
+        add_post_type_support('wp_101_list', 'nav-menus');
     }
 
     /**
