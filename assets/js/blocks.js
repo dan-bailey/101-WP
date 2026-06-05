@@ -220,7 +220,13 @@
                             isGenerated: true
                         });
                     } else {
-                        alert(__('Error generating report: ', '101-wp') + (result.data.message || 'Unknown error'));
+                        var errorMsg = 'Unknown error';
+                        if (result.data && result.data.message) {
+                            errorMsg = result.data.message;
+                        } else if (result.message) {
+                            errorMsg = result.message;
+                        }
+                        alert(__('Error generating report: ', '101-wp') + errorMsg);
                     }
                 })
                 .catch(function(error) {

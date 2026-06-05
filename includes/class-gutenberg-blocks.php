@@ -439,13 +439,19 @@ class WP_101_Gutenberg_Blocks {
         // Completed Tasks
         if (!empty($timeframe_completed)) {
             $html .= '<div class="wp-101-report-section wp-101-report-completed">';
-            $html .= '<h3 contenteditable="true">' . __('Completed Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('Completed Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_completed as $item) {
                 $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p><strong>' . esc_html($item['title']) . '</strong>';
+                $html .= '<p>✅ ' . esc_html($item['title']) . '</p>';
 
-                // Add count info if it's a count-based task
-                if (isset($item['subtasks']) && is_array($item['subtasks'])) {
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+                // Add count info if it's a detailed list task
+                elseif (isset($item['subtasks']) && is_array($item['subtasks'])) {
                     $subtask_count = count($item['subtasks']);
                     if ($subtask_count > 0) {
                         $html .= ' (' . $subtask_count . ' items)';
@@ -462,13 +468,19 @@ class WP_101_Gutenberg_Blocks {
         // In-Progress Tasks
         if (!empty($timeframe_in_progress)) {
             $html .= '<div class="wp-101-report-section wp-101-report-in-progress">';
-            $html .= '<h3 contenteditable="true">' . __('In-Progress Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('In-Progress Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_in_progress as $item) {
                 $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p><strong>' . esc_html($item['title']) . '</strong>';
+                $html .= '<p>🔄 ' . esc_html($item['title']) . '</p>';
 
-                // Add count info if it's a count-based task
-                if (isset($item['subtasks']) && is_array($item['subtasks'])) {
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+                // Add count info if it's a detailed list task
+                elseif (isset($item['subtasks']) && is_array($item['subtasks'])) {
                     $completed = 0;
                     foreach ($item['subtasks'] as $subtask) {
                         if ($subtask['completed']) {
@@ -489,10 +501,19 @@ class WP_101_Gutenberg_Blocks {
         // Failed Tasks
         if (!empty($timeframe_failed)) {
             $html .= '<div class="wp-101-report-section wp-101-report-failed">';
-            $html .= '<h3 contenteditable="true">' . __('Failed Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('Failed Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_failed as $item) {
                 $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p><strong>' . esc_html($item['title']) . '</strong></p>';
+                $html .= '<p>❌ ' . esc_html($item['title']) . '</p>';
+
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+
+                $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the failed task.', '101-wp') . '</p>';
                 $html .= '</div>';
             }
