@@ -394,12 +394,9 @@ class WP_101_Gutenberg_Blocks {
                 }
             }
 
-            // Check if in-progress items were started within timeframe
-            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
-                $start_time = strtotime($item['start_date']);
-                if ($start_time >= $start && $start_time <= $end) {
-                    $timeframe_in_progress[] = $item;
-                }
+            // Include all in-progress items regardless of start date
+            if ($item['status'] === 'underway') {
+                $timeframe_in_progress[] = $item;
             }
         }
 
