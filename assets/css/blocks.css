@@ -109,10 +109,10 @@
 }
 
 .wp-101-report-section h3 {
-    font-size: 1.5em;
+    font-size: 1.25em;
     margin-bottom: 1em;
     padding-bottom: 0.5em;
-    border-bottom: 2px solid currentColor;
+    border-bottom: 1px solid #ddd;
 }
 
 .wp-101-report-section p {
@@ -126,11 +126,16 @@
 }
 
 .wp-101-report-item {
-    margin-bottom: 1.5em;
-    padding: 1em;
-    background: rgba(0, 0, 0, 0.01);
-    border-left: 3px solid currentColor;
-    border-radius: 2px;
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    transition: box-shadow 0.2s ease;
+}
+
+.wp-101-report-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .wp-101-report-item p {
@@ -142,15 +147,19 @@
 }
 
 .wp-101-report-completed .wp-101-report-item {
-    border-left-color: #10b981;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
 }
 
 .wp-101-report-in-progress .wp-101-report-item {
-    border-left-color: #3b82f6;
+    background: #eff6ff;
+    border-color: #bfdbfe;
 }
 
 .wp-101-report-failed .wp-101-report-item {
-    border-left-color: #ef4444;
+    background: #fef2f2;
+    border-color: #fecaca;
+    opacity: 0.7;
 }
 
 .wp-101-no-report {

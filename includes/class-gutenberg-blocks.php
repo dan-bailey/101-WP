@@ -378,23 +378,28 @@ class WP_101_Gutenberg_Blocks {
                     break;
             }
 
-            // Check if item falls within timeframe
-            if (!empty($item['completion_date'])) {
+            // Check if completed items fall within timeframe
+            if ($item['status'] === 'complete' && !empty($item['completion_date'])) {
                 $completion_time = strtotime($item['completion_date']);
                 if ($completion_time >= $start && $completion_time <= $end) {
-                    if ($item['status'] === 'complete') {
-                        $timeframe_completed[] = $item;
-                    } elseif ($item['status'] === 'failed') {
-                        $timeframe_failed[] = $item;
-                    }
+                    $timeframe_completed[] = $item;
                 }
             }
 
-            // Also include in-progress items that were updated in timeframe
-            if ($item['status'] === 'underway') {
-                // For now, include all underway items
-                // TODO: Add logic to check if item was updated in timeframe
-                $timeframe_in_progress[] = $item;
+            // Check if failed items fall within timeframe
+            if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
+                $fail_time = strtotime($item['fail_date']);
+                if ($fail_time >= $start && $fail_time <= $end) {
+                    $timeframe_failed[] = $item;
+                }
+            }
+
+            // Check if in-progress items were started within timeframe
+            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
+                $start_time = strtotime($item['start_date']);
+                if ($start_time >= $start && $start_time <= $end) {
+                    $timeframe_in_progress[] = $item;
+                }
             }
         }
 
@@ -460,6 +465,12 @@ class WP_101_Gutenberg_Blocks {
 
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the task completion.', '101-wp') . '</p>';
+
+                // Add completion date
+                if (!empty($item['completion_date'])) {
+                    $html .= '<p><em>Completed: ' . date_i18n(get_option('date_format'), strtotime($item['completion_date'])) . '</em></p>';
+                }
+
                 $html .= '</div>';
             }
             $html .= '</div>';
@@ -493,6 +504,12 @@ class WP_101_Gutenberg_Blocks {
 
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the task in-progress.', '101-wp') . '</p>';
+
+                // Add start date
+                if (!empty($item['start_date'])) {
+                    $html .= '<p><em>Started: ' . date_i18n(get_option('date_format'), strtotime($item['start_date'])) . '</em></p>';
+                }
+
                 $html .= '</div>';
             }
             $html .= '</div>';
@@ -515,6 +532,12 @@ class WP_101_Gutenberg_Blocks {
 
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the failed task.', '101-wp') . '</p>';
+
+                // Add fail date
+                if (!empty($item['fail_date'])) {
+                    $html .= '<p><em>Failed: ' . date_i18n(get_option('date_format'), strtotime($item['fail_date'])) . '</em></p>';
+                }
+
                 $html .= '</div>';
             }
             $html .= '</div>';
