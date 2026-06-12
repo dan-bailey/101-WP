@@ -52,7 +52,7 @@
 
 /* Timeframe Report Block - Editor Preview Styles */
 .wp-101-timeframe-report {
-    max-width: 800px;
+    /* max-width: 800px; */
     margin: 0 auto;
 }
 
@@ -70,14 +70,6 @@
 .wp-101-report-section p {
     margin-bottom: 0.75em;
     line-height: 1.6;
-}
-
-.wp-101-report-overview,
-.wp-101-report-timeframe {
-    background: #f9f9f9;
-    padding: 1.5em;
-    border-radius: 8px;
-    border-left: 4px solid #3b82f6;
 }
 
 .wp-101-report-item {
