@@ -146,6 +146,11 @@
     margin-bottom: 0;
 }
 
+.wp-101-report-date {
+    color: #666;
+    font-size: 0.9em;
+}
+
 .wp-101-report-completed .wp-101-report-item {
     background: #f0fdf4;
     border-color: #bbf7d0;

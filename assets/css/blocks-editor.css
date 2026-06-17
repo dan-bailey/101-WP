@@ -93,6 +93,27 @@
     margin-bottom: 0;
 }
 
+.wp-101-report-item-content {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-style: italic;
+}
+
+.wp-101-report-date {
+    user-select: none;
+    pointer-events: none;
+    color: #666;
+    font-size: 0.9em;
+}
+
 .wp-101-report-completed .wp-101-report-item {
     background: #f0fdf4;
     border-color: #bbf7d0;

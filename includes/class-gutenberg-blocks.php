@@ -320,18 +320,23 @@ class WP_101_Gutenberg_Blocks {
     }
 
     /**
-     * Render the Timeframe Report block
+     * Generate timeframe report data
+     * Returns structured data that can be converted to HTML or rendered with InnerBlocks
      */
-    public static function render_timeframe_report_block($attributes) {
-        // If report content exists, just return it
-        if (!empty($attributes['reportContent'])) {
-            return '<div class="wp-101-timeframe-report">' . $attributes['reportContent'] . '</div>';
+    public static function generate_timeframe_report($list_id, $start_date, $end_date) {
+        $list = get_post($list_id);
+        if (!$list || $list->post_type !== 'wp_101_list') {
+            return [];
         }
 
-        // Otherwise, show a placeholder
-        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
-               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
-    }
+        $items = get_post_meta($list->ID, '_wp_101_items', true);
+        if (!is_array($items) || empty($items)) {
+            return [];
+        }
+
+        // Filter items by completion date within timeframe
+        $start = strtotime($start_date);
+        $end = strtotime($end_date);
 
     /**
      * Generate timeframe report content
@@ -429,7 +434,7 @@ class WP_101_Gutenberg_Blocks {
 
         // Timeframe Section
         $html .= '<div class="wp-101-report-section wp-101-report-timeframe">';
-        $html .= '<h3 contenteditable="true">' . __('Timeframe', '101-wp') . '</h3>';
+        $html .= '<h3>' . __('Timeframe', '101-wp') . '</h3>';
         $html .= '<p>';
         $html .= '<strong>' . date_i18n('F j, Y', $start) . '</strong> ' . __('to', '101-wp') . ' <strong>' . date_i18n('F j, Y', $end) . '</strong><br>';
         $html .= '<strong>' . __('Timeframe Completed Items:', '101-wp') . '</strong> ' . $tf_completed_count . ' (' . $tf_completed_pct . '%)<br>';
@@ -441,10 +446,10 @@ class WP_101_Gutenberg_Blocks {
         // Completed Tasks
         if (!empty($timeframe_completed)) {
             $html .= '<div class="wp-101-report-section wp-101-report-completed">';
-            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('Completed Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title">' . __('Completed Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_completed as $item) {
-                $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p>✅ ' . esc_html($item['title']) . '</p>';
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>✅ ' . esc_html($item['title']);
 
                 // Add progress counter for Simple Count tasks
                 if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
@@ -463,9 +468,9 @@ class WP_101_Gutenberg_Blocks {
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the task completion.', '101-wp') . '</p>';
 
-                // Add completion date
+                // Add completion date (read-only)
                 if (!empty($item['completion_date'])) {
-                    $html .= '<p><em>Completed: ' . date_i18n(get_option('date_format'), strtotime($item['completion_date'])) . '</em></p>';
+                    $html .= '<p class="wp-101-report-date"><em>Completed: ' . date_i18n(get_option('date_format'), strtotime($item['completion_date'])) . '</em></p>';
                 }
 
                 $html .= '</div>';
@@ -476,10 +481,10 @@ class WP_101_Gutenberg_Blocks {
         // In-Progress Tasks
         if (!empty($timeframe_in_progress)) {
             $html .= '<div class="wp-101-report-section wp-101-report-in-progress">';
-            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('In-Progress Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title">' . __('In-Progress Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_in_progress as $item) {
-                $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p>🔄 ' . esc_html($item['title']) . '</p>';
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>🔄 ' . esc_html($item['title']);
 
                 // Add progress counter for Simple Count tasks
                 if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
@@ -502,9 +507,9 @@ class WP_101_Gutenberg_Blocks {
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the task in-progress.', '101-wp') . '</p>';
 
-                // Add start date
+                // Add start date (read-only)
                 if (!empty($item['start_date'])) {
-                    $html .= '<p><em>Started: ' . date_i18n(get_option('date_format'), strtotime($item['start_date'])) . '</em></p>';
+                    $html .= '<p class="wp-101-report-date"><em>Started: ' . date_i18n(get_option('date_format'), strtotime($item['start_date'])) . '</em></p>';
                 }
 
                 $html .= '</div>';
@@ -515,10 +520,10 @@ class WP_101_Gutenberg_Blocks {
         // Failed Tasks
         if (!empty($timeframe_failed)) {
             $html .= '<div class="wp-101-report-section wp-101-report-failed">';
-            $html .= '<h3 class="wp-101-category-title" contenteditable="true">' . __('Failed Tasks', '101-wp') . '</h3>';
+            $html .= '<h3 class="wp-101-category-title">' . __('Failed Tasks', '101-wp') . '</h3>';
             foreach ($timeframe_failed as $item) {
-                $html .= '<div class="wp-101-report-item" contenteditable="true">';
-                $html .= '<p>❌ ' . esc_html($item['title']) . '</p>';
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>❌ ' . esc_html($item['title']);
 
                 // Add progress counter for Simple Count tasks
                 if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
@@ -530,9 +535,9 @@ class WP_101_Gutenberg_Blocks {
                 $html .= '</p>';
                 $html .= '<p>' . __('Space here for user editable text to talk about the failed task.', '101-wp') . '</p>';
 
-                // Add fail date
+                // Add fail date (read-only)
                 if (!empty($item['fail_date'])) {
-                    $html .= '<p><em>Failed: ' . date_i18n(get_option('date_format'), strtotime($item['fail_date'])) . '</em></p>';
+                    $html .= '<p class="wp-101-report-date"><em>Failed: ' . date_i18n(get_option('date_format'), strtotime($item['fail_date'])) . '</em></p>';
                 }
 
                 $html .= '</div>';
@@ -542,6 +547,27 @@ class WP_101_Gutenberg_Blocks {
 
         return $html;
     }
+
+    /**
+     * Render the Timeframe Report block
+     */
+    public static function render_timeframe_report_block($attributes) {
+        // If report content exists, just return it
+        if (!empty($attributes['reportContent'])) {
+            return '<div class="wp-101-timeframe-report">' . $attributes['reportContent'] . '</div>';
+        }
+
+        // Otherwise, show a placeholder
+        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
+               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
+    }
+        }
+
+        // Otherwise, show a placeholder
+        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
+               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
+    }
+
 
     /**
      * Check if there's an active list
@@ -622,9 +648,9 @@ class WP_101_Gutenberg_Blocks {
             return;
         }
 
-        $html = self::generate_timeframe_report($list_id, $start_date, $end_date);
+        $report_data = self::generate_timeframe_report($list_id, $start_date, $end_date);
 
-        wp_send_json_success(['html' => $html]);
+        wp_send_json_success(['reportData' => $report_data]);
     }
 
     /**
