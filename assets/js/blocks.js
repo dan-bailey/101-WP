@@ -1,4 +1,4 @@
-(function(blocks, element, editor, components, i18n) {
+(function(blocks, element, editor, components, i18n, blockEditor) {
     var el = element.createElement;
     var registerBlockType = blocks.registerBlockType;
     var InspectorControls = editor.InspectorControls;
@@ -7,6 +7,7 @@
     var SelectControl = components.SelectControl;
     var TextControl = components.TextControl;
     var __ = i18n.__;
+    var InnerBlocks = blockEditor.InnerBlocks;
 
     registerBlockType('wp-101/current-progress', {
         title: __('101 Current Progress', '101-wp'),
@@ -160,9 +161,9 @@
                 type: 'string',
                 default: ''
             },
-            reportContent: {
-                type: 'string',
-                default: ''
+            reportData: {
+                type: 'object',
+                default: {}
             },
             isGenerated: {
                 type: 'boolean',
@@ -173,6 +174,7 @@
         edit: function(props) {
             var attributes = props.attributes;
             var setAttributes = props.setAttributes;
+            var clientId = props.clientId;
             var allLists = wp101Data && wp101Data.allLists ? wp101Data.allLists : [];
 
             if (!allLists || allLists.length === 0) {
@@ -191,49 +193,250 @@
                 { value: 0, label: __('Select a 101 List', '101-wp') }
             ].concat(allLists);
 
+            // Function to create block template from report data
+            function createBlocksFromData(data) {
+                var blocks = [];
+
+                // Overview Section
+                var overviewGroup = wp.blocks.createBlock('core/group', {
+                    className: 'wp-101-report-section wp-101-report-overview'
+                }, [
+                    wp.blocks.createBlock('core/heading', {
+                        level: 3,
+                        content: __('Overall Progress', '101-wp')
+                    }),
+                    wp.blocks.createBlock('core/paragraph', {
+                        content: '<strong>' + __('Total Items:', '101-wp') + '</strong> ' + data.overview.totalItems + '<br>' +
+                            '<strong>' + __('Total Completed Items:', '101-wp') + '</strong> ' + data.overview.totalCompleted + ' (' + data.overview.totalCompletedPct + '%)<br>' +
+                            '<strong>' + __('Total In-Progress Items:', '101-wp') + '</strong> ' + data.overview.totalInProgress + ' (' + data.overview.totalInProgressPct + '%)<br>' +
+                            '<strong>' + __('Total Failed Items:', '101-wp') + '</strong> ' + data.overview.totalFailed + ' (' + data.overview.totalFailedPct + '%)'
+                    })
+                ]);
+                blocks.push(overviewGroup);
+
+                // Timeframe Section
+                var timeframeGroup = wp.blocks.createBlock('core/group', {
+                    className: 'wp-101-report-section wp-101-report-timeframe'
+                }, [
+                    wp.blocks.createBlock('core/heading', {
+                        level: 3,
+                        content: __('Timeframe', '101-wp')
+                    }),
+                    wp.blocks.createBlock('core/paragraph', {
+                        content: '<strong>' + data.timeframe.startDate + '</strong> ' + __('to', '101-wp') + ' <strong>' + data.timeframe.endDate + '</strong><br>' +
+                            '<strong>' + __('Timeframe Completed Items:', '101-wp') + '</strong> ' + data.timeframe.completedCount + ' (' + data.timeframe.completedPct + '%)<br>' +
+                            '<strong>' + __('Timeframe In-Progress Items:', '101-wp') + '</strong> ' + data.timeframe.inProgressCount + ' (' + data.timeframe.inProgressPct + '%)<br>' +
+                            '<strong>' + __('Timeframe Failed Items:', '101-wp') + '</strong> ' + data.timeframe.failedCount + ' (' + data.timeframe.failedPct + '%)'
+                    })
+                ]);
+                blocks.push(timeframeGroup);
+
+                // Completed Tasks
+                if (data.completed && data.completed.length > 0) {
+                    var completedInnerBlocks = [
+                        wp.blocks.createBlock('core/heading', {
+                            level: 3,
+                            className: 'wp-101-category-title',
+                            content: __('Completed Tasks', '101-wp')
+                        })
+                    ];
+
+                    data.completed.forEach(function(item) {
+                        var itemTitle = '✅ ' + item.title;
+
+                        // Add progress counter for Simple Count tasks
+                        if (item.tracking_mode === 'count') {
+                            var current = item.current_count || 0;
+                            var target = item.target_count || 1;
+                            itemTitle += ' (' + current + '/' + target + ')';
+                        }
+                        // Add count info if it's a detailed list task
+                        else if (item.subtasks && item.subtasks.length > 0) {
+                            itemTitle += ' (' + item.subtasks.length + ' items)';
+                        }
+
+                        var itemBlocks = [
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: itemTitle,
+                                lock: { move: false, remove: false }
+                            }),
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: __('Add notes about this completed task here.', '101-wp'),
+                                placeholder: __('Add notes about this completed task here.', '101-wp')
+                            })
+                        ];
+
+                        // Add completion date if available
+                        if (item.completion_date) {
+                            var dateObj = new Date(item.completion_date);
+                            var dateStr = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                            itemBlocks.push(wp.blocks.createBlock('core/paragraph', {
+                                className: 'wp-101-report-date',
+                                content: 'Completed: ' + dateStr,
+                                lock: { move: false, remove: false }
+                            }));
+                        }
+
+                        completedInnerBlocks.push(wp.blocks.createBlock('core/group', {
+                            className: 'wp-101-report-item'
+                        }, itemBlocks));
+                    });
+
+                    blocks.push(wp.blocks.createBlock('core/group', {
+                        className: 'wp-101-report-section wp-101-report-completed'
+                    }, completedInnerBlocks));
+                }
+
+                // In-Progress Tasks
+                if (data.inProgress && data.inProgress.length > 0) {
+                    var inProgressInnerBlocks = [
+                        wp.blocks.createBlock('core/heading', {
+                            level: 3,
+                            className: 'wp-101-category-title',
+                            content: __('In-Progress Tasks', '101-wp')
+                        })
+                    ];
+
+                    data.inProgress.forEach(function(item) {
+                        var itemTitle = '🔄 ' + item.title;
+
+                        // Add progress counter for Simple Count tasks
+                        if (item.tracking_mode === 'count') {
+                            var current = item.current_count || 0;
+                            var target = item.target_count || 1;
+                            itemTitle += ' (' + current + '/' + target + ')';
+                        }
+                        // Add count info if it's a detailed list task
+                        else if (item.subtasks && item.subtasks.length > 0) {
+                            var completed = 0;
+                            item.subtasks.forEach(function(subtask) {
+                                if (subtask.completed) completed++;
+                            });
+                            itemTitle += ' (' + completed + '/' + item.subtasks.length + ')';
+                        }
+
+                        var itemBlocks = [
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: itemTitle,
+                                lock: { move: false, remove: false }
+                            }),
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: __('Add notes about this in-progress task here.', '101-wp'),
+                                placeholder: __('Add notes about this in-progress task here.', '101-wp')
+                            })
+                        ];
+
+                        // Add start date if available
+                        if (item.start_date) {
+                            var dateObj = new Date(item.start_date);
+                            var dateStr = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                            itemBlocks.push(wp.blocks.createBlock('core/paragraph', {
+                                className: 'wp-101-report-date',
+                                content: 'Started: ' + dateStr,
+                                lock: { move: false, remove: false }
+                            }));
+                        }
+
+                        inProgressInnerBlocks.push(wp.blocks.createBlock('core/group', {
+                            className: 'wp-101-report-item'
+                        }, itemBlocks));
+                    });
+
+                    blocks.push(wp.blocks.createBlock('core/group', {
+                        className: 'wp-101-report-section wp-101-report-in-progress'
+                    }, inProgressInnerBlocks));
+                }
+
+                // Failed Tasks
+                if (data.failed && data.failed.length > 0) {
+                    var failedInnerBlocks = [
+                        wp.blocks.createBlock('core/heading', {
+                            level: 3,
+                            className: 'wp-101-category-title',
+                            content: __('Failed Tasks', '101-wp')
+                        })
+                    ];
+
+                    data.failed.forEach(function(item) {
+                        var itemBlocks = [
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: '❌ ' + item.title,
+                                lock: { move: false, remove: false }
+                            }),
+                            wp.blocks.createBlock('core/paragraph', {
+                                content: __('Add notes about this failed task here.', '101-wp'),
+                                placeholder: __('Add notes about this failed task here.', '101-wp')
+                            })
+                        ];
+
+                        // Add fail date if available
+                        if (item.fail_date) {
+                            var dateObj = new Date(item.fail_date);
+                            var dateStr = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                            itemBlocks.push(wp.blocks.createBlock('core/paragraph', {
+                                className: 'wp-101-report-date',
+                                content: 'Failed: ' + dateStr,
+                                lock: { move: false, remove: false }
+                            }));
+                        }
+
+                        failedInnerBlocks.push(wp.blocks.createBlock('core/group', {
+                            className: 'wp-101-report-item'
+                        }, itemBlocks));
+                    });
+
+                    blocks.push(wp.blocks.createBlock('core/group', {
+                        className: 'wp-101-report-section wp-101-report-failed'
+                    }, failedInnerBlocks));
+                }
+
+                return blocks;
+            }
+
             // Function to generate report
             function generateReport() {
                 console.log('[WP-101 Report] Generate button clicked');
-                console.log('[WP-101 Report] Attributes:', attributes);
-                console.log('[WP-101 Report] wp101Data:', wp101Data);
 
                 if (!attributes.listId || !attributes.startDate || !attributes.endDate) {
                     alert(__('Please select a list and enter both start and end dates.', '101-wp'));
                     return;
                 }
 
-                console.log('[WP-101 Report] Making AJAX request...');
-
                 // Make AJAX call to generate report
-                var data = new FormData();
-                data.append('action', 'wp_101_generate_timeframe_report');
-                data.append('nonce', wp101Data.nonce);
-                data.append('listId', attributes.listId);
-                data.append('startDate', attributes.startDate);
-                data.append('endDate', attributes.endDate);
+                var formData = new FormData();
+                formData.append('action', 'wp_101_generate_timeframe_report');
+                formData.append('nonce', wp101Data.nonce);
+                formData.append('listId', attributes.listId);
+                formData.append('startDate', attributes.startDate);
+                formData.append('endDate', attributes.endDate);
 
                 fetch(wp101Data.ajaxUrl, {
                     method: 'POST',
-                    body: data
+                    body: formData
                 })
                 .then(function(response) {
-                    console.log('[WP-101 Report] Response received:', response);
                     return response.json();
                 })
                 .then(function(result) {
                     console.log('[WP-101 Report] Result:', result);
-                    if (result.success) {
-                        console.log('[WP-101 Report] Success! Setting attributes...');
+                    if (result.success && result.data && result.data.data) {
+                        // Create blocks from the data
+                        var newBlocks = createBlocksFromData(result.data.data);
+
+                        // Insert the blocks
+                        wp.data.dispatch('core/block-editor').replaceInnerBlocks(clientId, newBlocks);
+
+                        // Update attributes
                         setAttributes({
-                            reportContent: result.data.html,
+                            reportData: result.data.data,
                             isGenerated: true
                         });
+
+                        console.log('[WP-101 Report] Report generated successfully');
                     } else {
                         var errorMsg = 'Unknown error';
                         if (result.data && result.data.message) {
                             errorMsg = result.data.message;
-                        } else if (result.message) {
-                            errorMsg = result.message;
                         }
                         console.error('[WP-101 Report] Error:', errorMsg);
                         alert(__('Error generating report: ', '101-wp') + errorMsg);
@@ -245,8 +448,8 @@
                 });
             }
 
-            // If report is generated, show it with edit controls
-            if (attributes.isGenerated && attributes.reportContent) {
+            // If report is generated, show InnerBlocks with edit controls
+            if (attributes.isGenerated) {
                 return [
                     el(InspectorControls, { key: 'inspector' },
                         el(PanelBody, { title: __('Report Settings', '101-wp'), initialOpen: true },
@@ -258,7 +461,7 @@
                                     setAttributes({
                                         listId: parseInt(value),
                                         isGenerated: false,
-                                        reportContent: ''
+                                        reportData: {}
                                     });
                                 }
                             }),
@@ -270,7 +473,7 @@
                                     setAttributes({
                                         startDate: value,
                                         isGenerated: false,
-                                        reportContent: ''
+                                        reportData: {}
                                     });
                                 }
                             }),
@@ -282,7 +485,7 @@
                                     setAttributes({
                                         endDate: value,
                                         isGenerated: false,
-                                        reportContent: ''
+                                        reportData: {}
                                     });
                                 }
                             }),
@@ -294,9 +497,12 @@
                     ),
                     el('div', {
                         key: 'block',
-                        className: 'wp-101-timeframe-report',
-                        dangerouslySetInnerHTML: { __html: attributes.reportContent }
-                    })
+                        className: 'wp-101-timeframe-report'
+                    },
+                        el(InnerBlocks, {
+                            templateLock: false
+                        })
+                    )
                 ];
             }
 
@@ -377,9 +583,8 @@
             ];
         },
 
-        save: function() {
-            // Dynamic block, rendered server-side
-            return null;
+        save: function(props) {
+            return el(InnerBlocks.Content);
         }
     });
 })(
@@ -387,5 +592,6 @@
     window.wp.element,
     window.wp.blockEditor || window.wp.editor,
     window.wp.components,
-    window.wp.i18n
+    window.wp.i18n,
+    window.wp.blockEditor
 );

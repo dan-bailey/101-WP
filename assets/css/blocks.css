@@ -104,6 +104,11 @@
     margin: 0 auto;
 }
 
+/* Remove default group block inner container padding */
+.wp-101-timeframe-report .wp-block-group__inner-container {
+    padding: 0 !important;
+}
+
 .wp-101-report-section {
     margin-bottom: 2.5em;
 }
@@ -149,6 +154,7 @@
 .wp-101-report-date {
     color: #666;
     font-size: 0.9em;
+    font-style: italic;
 }
 
 .wp-101-report-completed .wp-101-report-item {
