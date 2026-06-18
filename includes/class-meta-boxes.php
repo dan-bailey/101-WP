@@ -203,7 +203,9 @@ class WP_101_Meta_Boxes {
             'target_count' => 1,
             'current_count' => 0,
             'sub_items' => [],
-            'completion_date' => ''
+            'completion_date' => '',
+            'start_date' => '',
+            'fail_date' => ''
         ];
 
         $item = wp_parse_args($item, $defaults);
@@ -360,6 +362,17 @@ class WP_101_Meta_Boxes {
                                       <?php echo $disabled_attr; ?>><?php echo esc_textarea($item['content']); ?></textarea>
                         </td>
                     </tr>
+                    <?php if (!empty($item['start_date'])): ?>
+                    <tr>
+                        <th><label><?php _e('Start Date', '101-wp'); ?></label></th>
+                        <td>
+                            <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item['start_date']))); ?>
+                            <input type="hidden"
+                                   name="wp_101_items[<?php echo esc_attr($index); ?>][start_date]"
+                                   value="<?php echo esc_attr($item['start_date']); ?>" />
+                        </td>
+                    </tr>
+                    <?php endif; ?>
                     <?php if (!empty($item['completion_date'])): ?>
                     <tr>
                         <th><label><?php _e('Completion Date', '101-wp'); ?></label></th>
@@ -368,6 +381,17 @@ class WP_101_Meta_Boxes {
                             <input type="hidden"
                                    name="wp_101_items[<?php echo esc_attr($index); ?>][completion_date]"
                                    value="<?php echo esc_attr($item['completion_date']); ?>" />
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($item['fail_date'])): ?>
+                    <tr>
+                        <th><label><?php _e('Fail Date', '101-wp'); ?></label></th>
+                        <td>
+                            <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item['fail_date']))); ?>
+                            <input type="hidden"
+                                   name="wp_101_items[<?php echo esc_attr($index); ?>][fail_date]"
+                                   value="<?php echo esc_attr($item['fail_date']); ?>" />
                         </td>
                     </tr>
                     <?php endif; ?>
@@ -566,7 +590,9 @@ class WP_101_Meta_Boxes {
                     'target_count' => $target_count_value,
                     'current_count' => intval($item['current_count'] ?? 0),
                     'sub_items' => [],
-                    'completion_date' => sanitize_text_field($item['completion_date'] ?? '')
+                    'completion_date' => sanitize_text_field($item['completion_date'] ?? ''),
+                    'start_date' => sanitize_text_field($item['start_date'] ?? ''),
+                    'fail_date' => sanitize_text_field($item['fail_date'] ?? '')
                 ];
 
                 // Skip items with empty titles
@@ -574,13 +600,33 @@ class WP_101_Meta_Boxes {
                     continue;
                 }
 
+                // Get old status from existing item to detect changes
+                $old_status = $existing_item['status'] ?? 'not_started';
+                $new_status = $sanitized_item['status'];
+
                 // Handle status changes
-                if ($sanitized_item['status'] === 'complete' && empty($sanitized_item['completion_date'])) {
+                if ($new_status === 'complete' && empty($sanitized_item['completion_date'])) {
                     // Set completion date when marked complete
                     $sanitized_item['completion_date'] = current_time('mysql');
-                } elseif ($sanitized_item['status'] !== 'complete' && !empty($sanitized_item['completion_date'])) {
+                } elseif ($new_status !== 'complete' && !empty($sanitized_item['completion_date'])) {
                     // Clear completion date when changed away from complete
                     $sanitized_item['completion_date'] = '';
+                }
+
+                // Set start_date when status changes to underway
+                if ($new_status === 'underway' && $old_status !== 'underway' && empty($sanitized_item['start_date'])) {
+                    $sanitized_item['start_date'] = current_time('mysql');
+                } elseif ($new_status !== 'underway' && !empty($sanitized_item['start_date'])) {
+                    // Clear start date when changed away from underway
+                    $sanitized_item['start_date'] = '';
+                }
+
+                // Set fail_date when status changes to failed
+                if ($new_status === 'failed' && $old_status !== 'failed' && empty($sanitized_item['fail_date'])) {
+                    $sanitized_item['fail_date'] = current_time('mysql');
+                } elseif ($new_status !== 'failed' && !empty($sanitized_item['fail_date'])) {
+                    // Clear fail date when changed away from failed
+                    $sanitized_item['fail_date'] = '';
                 }
 
                 // Detect mode changes

@@ -49,3 +49,130 @@
     border-radius: 50%;
     flex-shrink: 0;
 }
+
+/* Timeframe Report Block - Editor Preview Styles */
+.wp-101-timeframe-report {
+    /* max-width: 800px; */
+    margin: 0 auto;
+}
+
+/* Remove default group block inner container padding */
+.wp-101-timeframe-report .wp-block-group__inner-container {
+    padding: 0 !important;
+}
+
+.wp-101-report-section {
+    margin-bottom: 2.5em;
+}
+
+.wp-101-report-section h3 {
+    font-size: 1.25em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #ddd;
+}
+
+.wp-101-report-section p {
+    margin-bottom: 0.75em;
+    line-height: 1.6;
+}
+
+.wp-101-report-overview,
+.wp-101-report-timeframe {
+
+}
+
+.wp-101-report-item {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    transition: box-shadow 0.2s ease;
+}
+
+.wp-101-report-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.wp-101-report-item p {
+    margin-bottom: 0.5em;
+}
+
+.wp-101-report-item p:last-child {
+    margin-bottom: 0;
+}
+
+.wp-101-report-item-content {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-style: italic;
+}
+
+.wp-101-report-date {
+    user-select: none;
+    pointer-events: none;
+    color: #666;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.wp-101-report-completed .wp-101-report-item {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.wp-101-report-in-progress .wp-101-report-item {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.wp-101-report-failed .wp-101-report-item {
+    background: #fef2f2;
+    border-color: #fecaca;
+    opacity: 0.7;
+}
+
+.wp-101-no-report {
+    text-align: center;
+    padding: 60px 20px;
+    opacity: 0.7;
+}
+
+/* Category titles */
+.wp-101-category-title {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 1em;
+    padding-bottom: 0.75em;
+    border-bottom: 2px solid #ddd;
+}
+
+/* Responsive adjustments for report in editor */
+@media screen and (max-width: 768px) {
+    .wp-101-timeframe-report {
+        max-width: 100%;
+    }
+
+    .wp-101-report-section h3 {
+        font-size: 1.3em;
+    }
+
+    .wp-101-report-overview,
+    .wp-101-report-timeframe {
+        padding: 1em;
+    }
+
+    .wp-101-report-item {
+        padding: 0.75em;
+    }
+}

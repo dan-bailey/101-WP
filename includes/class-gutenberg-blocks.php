@@ -16,6 +16,7 @@ class WP_101_Gutenberg_Blocks {
         add_action('init', [__CLASS__, 'register_blocks']);
         add_action('enqueue_block_editor_assets', [__CLASS__, 'enqueue_block_editor_assets']);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_frontend_assets']);
+        add_action('wp_ajax_wp_101_generate_timeframe_report', [__CLASS__, 'ajax_generate_timeframe_report']);
     }
 
     /**
@@ -36,6 +37,36 @@ class WP_101_Gutenberg_Blocks {
                 'customTitle' => [
                     'type' => 'string',
                     'default' => ''
+                ]
+            ]
+        ]);
+
+        // Register the Timeframe Report block
+        register_block_type('wp-101/timeframe-report', [
+            'editor_script' => 'wp-101-blocks-editor',
+            'editor_style' => 'wp-101-blocks-editor-style',
+            'style' => 'wp-101-blocks-style',
+            'render_callback' => [__CLASS__, 'render_timeframe_report_block'],
+            'attributes' => [
+                'listId' => [
+                    'type' => 'number',
+                    'default' => 0
+                ],
+                'startDate' => [
+                    'type' => 'string',
+                    'default' => ''
+                ],
+                'endDate' => [
+                    'type' => 'string',
+                    'default' => ''
+                ],
+                'reportData' => [
+                    'type' => 'object',
+                    'default' => (object)[]
+                ],
+                'isGenerated' => [
+                    'type' => 'boolean',
+                    'default' => false
                 ]
             ]
         ]);
@@ -60,11 +91,21 @@ class WP_101_Gutenberg_Blocks {
             WP_101_VERSION
         );
 
+        // Also enqueue front-end styles in editor for accurate preview
+        wp_enqueue_style(
+            'wp-101-blocks-style',
+            WP_101_PLUGIN_URL . 'assets/css/blocks.css',
+            [],
+            WP_101_VERSION
+        );
+
         // Pass data to JavaScript
         wp_localize_script('wp-101-blocks-editor', 'wp101Data', [
             'hasActiveList' => self::has_active_list(),
             'activeListData' => self::get_active_list_data(),
-            'allLists' => self::get_all_lists()
+            'allLists' => self::get_all_lists(),
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('wp_101_timeframe_report')
         ]);
     }
 
@@ -287,6 +328,336 @@ class WP_101_Gutenberg_Blocks {
     }
 
     /**
+     * Render the Timeframe Report block
+     */
+    public static function render_timeframe_report_block($attributes, $content, $block) {
+        // Wrap the InnerBlocks content
+        if (!empty(trim($content))) {
+            return '<div class="wp-101-timeframe-report">' . $content . '</div>';
+        }
+
+        // Otherwise, show a placeholder
+        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
+               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
+    }
+
+    /**
+     * Generate timeframe report data (structured data for InnerBlocks)
+     * This is called from JavaScript during block configuration
+     */
+    public static function generate_timeframe_report_data($list_id, $start_date, $end_date) {
+        $list = get_post($list_id);
+        if (!$list || $list->post_type !== 'wp_101_list') {
+            return null;
+        }
+
+        $items = get_post_meta($list->ID, '_wp_101_items', true);
+        if (!is_array($items) || empty($items)) {
+            return null;
+        }
+
+        // Filter items by completion date within timeframe
+        $start = strtotime($start_date);
+        $end = strtotime($end_date);
+
+        $timeframe_completed = [];
+        $timeframe_in_progress = [];
+        $timeframe_failed = [];
+
+        $total_completed = 0;
+        $total_in_progress = 0;
+        $total_failed = 0;
+        $total_not_started = 0;
+
+        foreach ($items as $item) {
+            // Count totals (only top-level items, no subtasks)
+            switch ($item['status']) {
+                case 'complete':
+                    $total_completed++;
+                    break;
+                case 'underway':
+                    $total_in_progress++;
+                    break;
+                case 'failed':
+                    $total_failed++;
+                    break;
+                case 'not_started':
+                    $total_not_started++;
+                    break;
+            }
+
+            // Check if completed items fall within timeframe
+            if ($item['status'] === 'complete' && !empty($item['completion_date'])) {
+                $completion_time = strtotime($item['completion_date']);
+                if ($completion_time >= $start && $completion_time <= $end) {
+                    $timeframe_completed[] = $item;
+                }
+            }
+
+            // Check if failed items fall within timeframe
+            if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
+                $fail_time = strtotime($item['fail_date']);
+                if ($fail_time >= $start && $fail_time <= $end) {
+                    $timeframe_failed[] = $item;
+                }
+            }
+
+            // Include all in-progress items regardless of start date
+            if ($item['status'] === 'underway') {
+                $timeframe_in_progress[] = $item;
+            }
+        }
+
+        $total_items = count($items);
+        $total_completed_pct = $total_items > 0 ? round(($total_completed / $total_items) * 100) : 0;
+        $total_in_progress_pct = $total_items > 0 ? round(($total_in_progress / $total_items) * 100) : 0;
+        $total_failed_pct = $total_items > 0 ? round(($total_failed / $total_items) * 100) : 0;
+
+        $tf_completed_count = count($timeframe_completed);
+        $tf_in_progress_count = count($timeframe_in_progress);
+        $tf_failed_count = count($timeframe_failed);
+
+        $tf_completed_pct = $total_items > 0 ? round(($tf_completed_count / $total_items) * 100) : 0;
+        $tf_in_progress_pct = $total_items > 0 ? round(($tf_in_progress_count / $total_items) * 100) : 0;
+        $tf_failed_pct = $total_items > 0 ? round(($tf_failed_count / $total_items) * 100) : 0;
+
+        return [
+            'overview' => [
+                'totalItems' => $total_items,
+                'totalCompleted' => $total_completed,
+                'totalCompletedPct' => $total_completed_pct,
+                'totalInProgress' => $total_in_progress,
+                'totalInProgressPct' => $total_in_progress_pct,
+                'totalFailed' => $total_failed,
+                'totalFailedPct' => $total_failed_pct
+            ],
+            'timeframe' => [
+                'startDate' => date_i18n('F j, Y', $start),
+                'endDate' => date_i18n('F j, Y', $end),
+                'completedCount' => $tf_completed_count,
+                'completedPct' => $tf_completed_pct,
+                'inProgressCount' => $tf_in_progress_count,
+                'inProgressPct' => $tf_in_progress_pct,
+                'failedCount' => $tf_failed_count,
+                'failedPct' => $tf_failed_pct
+            ],
+            'completed' => $timeframe_completed,
+            'inProgress' => $timeframe_in_progress,
+            'failed' => $timeframe_failed
+        ];
+    }
+
+    /**
+     * Generate timeframe report HTML (legacy - still used for front-end fallback)
+     * This is called from JavaScript during block configuration
+     */
+    public static function generate_timeframe_report($list_id, $start_date, $end_date) {
+        $list = get_post($list_id);
+        if (!$list || $list->post_type !== 'wp_101_list') {
+            return '';
+        }
+
+        $items = get_post_meta($list->ID, '_wp_101_items', true);
+        if (!is_array($items) || empty($items)) {
+            return '';
+        }
+
+        // Filter items by completion date within timeframe
+        $start = strtotime($start_date);
+        $end = strtotime($end_date);
+
+        $timeframe_completed = [];
+        $timeframe_in_progress = [];
+        $timeframe_failed = [];
+
+        $total_completed = 0;
+        $total_in_progress = 0;
+        $total_failed = 0;
+        $total_not_started = 0;
+
+        foreach ($items as $item) {
+            // Count totals (only top-level items, no subtasks)
+            switch ($item['status']) {
+                case 'complete':
+                    $total_completed++;
+                    break;
+                case 'underway':
+                    $total_in_progress++;
+                    break;
+                case 'failed':
+                    $total_failed++;
+                    break;
+                case 'not_started':
+                    $total_not_started++;
+                    break;
+            }
+
+            // Check if completed items fall within timeframe
+            if ($item['status'] === 'complete' && !empty($item['completion_date'])) {
+                $completion_time = strtotime($item['completion_date']);
+                if ($completion_time >= $start && $completion_time <= $end) {
+                    $timeframe_completed[] = $item;
+                }
+            }
+
+            // Check if failed items fall within timeframe
+            if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
+                $fail_time = strtotime($item['fail_date']);
+                if ($fail_time >= $start && $fail_time <= $end) {
+                    $timeframe_failed[] = $item;
+                }
+            }
+
+            // Include all in-progress items regardless of start date
+            if ($item['status'] === 'underway') {
+                $timeframe_in_progress[] = $item;
+            }
+        }
+
+        $total_items = count($items);
+        $total_completed_pct = $total_items > 0 ? round(($total_completed / $total_items) * 100) : 0;
+        $total_in_progress_pct = $total_items > 0 ? round(($total_in_progress / $total_items) * 100) : 0;
+        $total_failed_pct = $total_items > 0 ? round(($total_failed / $total_items) * 100) : 0;
+
+        $tf_completed_count = count($timeframe_completed);
+        $tf_in_progress_count = count($timeframe_in_progress);
+        $tf_failed_count = count($timeframe_failed);
+
+        $tf_completed_pct = $total_items > 0 ? round(($tf_completed_count / $total_items) * 100) : 0;
+        $tf_in_progress_pct = $total_items > 0 ? round(($tf_in_progress_count / $total_items) * 100) : 0;
+        $tf_failed_pct = $total_items > 0 ? round(($tf_failed_count / $total_items) * 100) : 0;
+
+        // Build the report HTML
+        $html = '';
+
+        // Overview Section
+        $html .= '<div class="wp-101-report-section wp-101-report-overview">';
+        $html .= '<h3>' . __('Overall Progress', '101-wp') . '</h3>';
+        $html .= '<p>';
+        $html .= '<strong>' . __('Total Items:', '101-wp') . '</strong> ' . $total_items . '<br>';
+        $html .= '<strong>' . __('Total Completed Items:', '101-wp') . '</strong> ' . $total_completed . ' (' . $total_completed_pct . '%)<br>';
+        $html .= '<strong>' . __('Total In-Progress Items:', '101-wp') . '</strong> ' . $total_in_progress . ' (' . $total_in_progress_pct . '%)<br>';
+        $html .= '<strong>' . __('Total Failed Items:', '101-wp') . '</strong> ' . $total_failed . ' (' . $total_failed_pct . '%)';
+        $html .= '</p>';
+        $html .= '</div>';
+
+        // Timeframe Section
+        $html .= '<div class="wp-101-report-section wp-101-report-timeframe">';
+        $html .= '<h3>' . __('Timeframe', '101-wp') . '</h3>';
+        $html .= '<p>';
+        $html .= '<strong>' . date_i18n('F j, Y', $start) . '</strong> ' . __('to', '101-wp') . ' <strong>' . date_i18n('F j, Y', $end) . '</strong><br>';
+        $html .= '<strong>' . __('Timeframe Completed Items:', '101-wp') . '</strong> ' . $tf_completed_count . ' (' . $tf_completed_pct . '%)<br>';
+        $html .= '<strong>' . __('Timeframe In-Progress Items:', '101-wp') . '</strong> ' . $tf_in_progress_count . ' (' . $tf_in_progress_pct . '%)<br>';
+        $html .= '<strong>' . __('Timeframe Failed Items:', '101-wp') . '</strong> ' . $tf_failed_count . ' (' . $tf_failed_pct . '%)';
+        $html .= '</p>';
+        $html .= '</div>';
+
+        // Completed Tasks
+        if (!empty($timeframe_completed)) {
+            $html .= '<div class="wp-101-report-section wp-101-report-completed">';
+            $html .= '<h3 class="wp-101-category-title">' . __('Completed Tasks', '101-wp') . '</h3>';
+            foreach ($timeframe_completed as $item) {
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>✅ ' . esc_html($item['title']);
+
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+                // Add count info if it's a detailed list task
+                elseif (isset($item['subtasks']) && is_array($item['subtasks'])) {
+                    $subtask_count = count($item['subtasks']);
+                    if ($subtask_count > 0) {
+                        $html .= ' (' . $subtask_count . ' items)';
+                    }
+                }
+
+                $html .= '</p>';
+                $html .= '<p>' . __('Space here for user editable text to talk about the task completion.', '101-wp') . '</p>';
+
+                // Add completion date (read-only)
+                if (!empty($item['completion_date'])) {
+                    $html .= '<p class="wp-101-report-date"><em>Completed: ' . date_i18n(get_option('date_format'), strtotime($item['completion_date'])) . '</em></p>';
+                }
+
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+
+        // In-Progress Tasks
+        if (!empty($timeframe_in_progress)) {
+            $html .= '<div class="wp-101-report-section wp-101-report-in-progress">';
+            $html .= '<h3 class="wp-101-category-title">' . __('In-Progress Tasks', '101-wp') . '</h3>';
+            foreach ($timeframe_in_progress as $item) {
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>🔄 ' . esc_html($item['title']);
+
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+                // Add count info if it's a detailed list task
+                elseif (isset($item['subtasks']) && is_array($item['subtasks'])) {
+                    $completed = 0;
+                    foreach ($item['subtasks'] as $subtask) {
+                        if ($subtask['completed']) {
+                            $completed++;
+                        }
+                    }
+                    $total = count($item['subtasks']);
+                    $html .= ' (' . $completed . '/' . $total . ')';
+                }
+
+                $html .= '</p>';
+                $html .= '<p>' . __('Space here for user editable text to talk about the task in-progress.', '101-wp') . '</p>';
+
+                // Add start date (read-only)
+                if (!empty($item['start_date'])) {
+                    $html .= '<p class="wp-101-report-date"><em>Started: ' . date_i18n(get_option('date_format'), strtotime($item['start_date'])) . '</em></p>';
+                }
+
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+
+        // Failed Tasks
+        if (!empty($timeframe_failed)) {
+            $html .= '<div class="wp-101-report-section wp-101-report-failed">';
+            $html .= '<h3 class="wp-101-category-title">' . __('Failed Tasks', '101-wp') . '</h3>';
+            foreach ($timeframe_failed as $item) {
+                $html .= '<div class="wp-101-report-item">';
+                $html .= '<p>❌ ' . esc_html($item['title']);
+
+                // Add progress counter for Simple Count tasks
+                if (isset($item['tracking_mode']) && $item['tracking_mode'] === 'count') {
+                    $current = isset($item['current_count']) ? intval($item['current_count']) : 0;
+                    $target = isset($item['target_count']) ? intval($item['target_count']) : 1;
+                    $html .= ' (' . $current . '/' . $target . ')';
+                }
+
+                $html .= '</p>';
+                $html .= '<p>' . __('Space here for user editable text to talk about the failed task.', '101-wp') . '</p>';
+
+                // Add fail date (read-only)
+                if (!empty($item['fail_date'])) {
+                    $html .= '<p class="wp-101-report-date"><em>Failed: ' . date_i18n(get_option('date_format'), strtotime($item['fail_date'])) . '</em></p>';
+                }
+
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+
+        return $html;
+    }
+
+    /**
      * Check if there's an active list
      */
     private static function has_active_list() {
@@ -348,6 +719,31 @@ class WP_101_Gutenberg_Blocks {
         }
 
         return $formatted_lists;
+    }
+
+    /**
+     * AJAX handler for generating timeframe report
+     */
+    public static function ajax_generate_timeframe_report() {
+        check_ajax_referer('wp_101_timeframe_report', 'nonce');
+
+        $list_id = isset($_POST['listId']) ? intval($_POST['listId']) : 0;
+        $start_date = isset($_POST['startDate']) ? sanitize_text_field($_POST['startDate']) : '';
+        $end_date = isset($_POST['endDate']) ? sanitize_text_field($_POST['endDate']) : '';
+
+        if (!$list_id || !$start_date || !$end_date) {
+            wp_send_json_error(['message' => 'Missing required parameters']);
+            return;
+        }
+
+        $data = self::generate_timeframe_report_data($list_id, $start_date, $end_date);
+
+        if (!$data) {
+            wp_send_json_error(['message' => 'Unable to generate report data']);
+            return;
+        }
+
+        wp_send_json_success(['data' => $data]);
     }
 
     /**
