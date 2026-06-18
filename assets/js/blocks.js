@@ -193,10 +193,16 @@
 
             // Function to generate report
             function generateReport() {
+                console.log('[WP-101 Report] Generate button clicked');
+                console.log('[WP-101 Report] Attributes:', attributes);
+                console.log('[WP-101 Report] wp101Data:', wp101Data);
+
                 if (!attributes.listId || !attributes.startDate || !attributes.endDate) {
                     alert(__('Please select a list and enter both start and end dates.', '101-wp'));
                     return;
                 }
+
+                console.log('[WP-101 Report] Making AJAX request...');
 
                 // Make AJAX call to generate report
                 var data = new FormData();
@@ -211,10 +217,13 @@
                     body: data
                 })
                 .then(function(response) {
+                    console.log('[WP-101 Report] Response received:', response);
                     return response.json();
                 })
                 .then(function(result) {
+                    console.log('[WP-101 Report] Result:', result);
                     if (result.success) {
+                        console.log('[WP-101 Report] Success! Setting attributes...');
                         setAttributes({
                             reportContent: result.data.html,
                             isGenerated: true
@@ -226,10 +235,12 @@
                         } else if (result.message) {
                             errorMsg = result.message;
                         }
+                        console.error('[WP-101 Report] Error:', errorMsg);
                         alert(__('Error generating report: ', '101-wp') + errorMsg);
                     }
                 })
                 .catch(function(error) {
+                    console.error('[WP-101 Report] Caught error:', error);
                     alert(__('Error generating report: ', '101-wp') + error.message);
                 });
             }

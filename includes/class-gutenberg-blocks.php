@@ -91,6 +91,14 @@ class WP_101_Gutenberg_Blocks {
             WP_101_VERSION
         );
 
+        // Also enqueue front-end styles in editor for accurate preview
+        wp_enqueue_style(
+            'wp-101-blocks-style',
+            WP_101_PLUGIN_URL . 'assets/css/blocks.css',
+            [],
+            WP_101_VERSION
+        );
+
         // Pass data to JavaScript
         wp_localize_script('wp-101-blocks-editor', 'wp101Data', [
             'hasActiveList' => self::has_active_list(),
@@ -320,23 +328,18 @@ class WP_101_Gutenberg_Blocks {
     }
 
     /**
-     * Generate timeframe report data
-     * Returns structured data that can be converted to HTML or rendered with InnerBlocks
+     * Render the Timeframe Report block
      */
-    public static function generate_timeframe_report($list_id, $start_date, $end_date) {
-        $list = get_post($list_id);
-        if (!$list || $list->post_type !== 'wp_101_list') {
-            return [];
+    public static function render_timeframe_report_block($attributes) {
+        // If report content exists, just return it
+        if (!empty($attributes['reportContent'])) {
+            return '<div class="wp-101-timeframe-report">' . $attributes['reportContent'] . '</div>';
         }
 
-        $items = get_post_meta($list->ID, '_wp_101_items', true);
-        if (!is_array($items) || empty($items)) {
-            return [];
-        }
-
-        // Filter items by completion date within timeframe
-        $start = strtotime($start_date);
-        $end = strtotime($end_date);
+        // Otherwise, show a placeholder
+        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
+               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
+    }
 
     /**
      * Generate timeframe report content
@@ -549,27 +552,6 @@ class WP_101_Gutenberg_Blocks {
     }
 
     /**
-     * Render the Timeframe Report block
-     */
-    public static function render_timeframe_report_block($attributes) {
-        // If report content exists, just return it
-        if (!empty($attributes['reportContent'])) {
-            return '<div class="wp-101-timeframe-report">' . $attributes['reportContent'] . '</div>';
-        }
-
-        // Otherwise, show a placeholder
-        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
-               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
-    }
-        }
-
-        // Otherwise, show a placeholder
-        return '<div class="wp-101-timeframe-report wp-101-no-report"><p>' .
-               __('Configure and generate the timeframe report in the editor.', '101-wp') . '</p></div>';
-    }
-
-
-    /**
      * Check if there's an active list
      */
     private static function has_active_list() {
@@ -648,9 +630,9 @@ class WP_101_Gutenberg_Blocks {
             return;
         }
 
-        $report_data = self::generate_timeframe_report($list_id, $start_date, $end_date);
+        $html = self::generate_timeframe_report($list_id, $start_date, $end_date);
 
-        wp_send_json_success(['reportData' => $report_data]);
+        wp_send_json_success(['html' => $html]);
     }
 
     /**
