@@ -108,6 +108,18 @@ class WP_101_Frontend {
     }
 
     /**
+     * Convert MySQL datetime to timestamp respecting WordPress timezone
+     */
+    private static function mysql_to_timestamp($mysql_date) {
+        if (empty($mysql_date)) {
+            return 0;
+        }
+        $timezone = wp_timezone();
+        $dt = new DateTime($mysql_date, $timezone);
+        return $dt->getTimestamp();
+    }
+
+    /**
      * Render a single item
      */
     private static function render_item($item) {
@@ -164,7 +176,7 @@ class WP_101_Frontend {
 
                 if ($sub_item['completed'] && !empty($sub_item['date'])) {
                     $html .= '<span class="wp-101-sub-date">';
-                    $html .= date_i18n(get_option('date_format'), strtotime($sub_item['date']));
+                    $html .= date_i18n(get_option('date_format'), self::mysql_to_timestamp($sub_item['date']));
                     $html .= '</span>';
                 }
 
@@ -178,7 +190,27 @@ class WP_101_Frontend {
             $html .= '<div class="wp-101-completion-date">';
             $html .= sprintf(
                 __('Completed: %s', '101-wp'),
-                date_i18n(get_option('date_format'), strtotime($item['completion_date']))
+                date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['completion_date']))
+            );
+            $html .= '</div>';
+        }
+
+        // Started date for in-progress items
+        if ($item['status'] === 'underway' && !empty($item['start_date'])) {
+            $html .= '<div class="wp-101-started-date">';
+            $html .= sprintf(
+                __('Started: %s', '101-wp'),
+                date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['start_date']))
+            );
+            $html .= '</div>';
+        }
+
+        // Failed date for failed items
+        if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
+            $html .= '<div class="wp-101-failed-date">';
+            $html .= sprintf(
+                __('Failed: %s', '101-wp'),
+                date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['fail_date']))
             );
             $html .= '</div>';
         }

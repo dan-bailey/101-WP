@@ -333,7 +333,7 @@ class WP_101_Gutenberg_Blocks {
     public static function render_timeframe_report_block($attributes, $content, $block) {
         // Wrap the InnerBlocks content
         if (!empty(trim($content))) {
-            return '<div class="wp-101-timeframe-report">' . $content . '</div>';
+            return '<div class="wp-101-timeframe-report">' . wp_kses_post($content) . '</div>';
         }
 
         // Otherwise, show a placeholder
@@ -357,8 +357,12 @@ class WP_101_Gutenberg_Blocks {
         }
 
         // Filter items by completion date within timeframe
-        $start = strtotime($start_date);
-        $end = strtotime($end_date);
+        // Use WordPress timezone for proper date comparisons
+        $timezone = wp_timezone();
+        $start_dt = new DateTime($start_date . ' 00:00:00', $timezone);
+        $end_dt = new DateTime($end_date . ' 23:59:59', $timezone);
+        $start = $start_dt->getTimestamp();
+        $end = $end_dt->getTimestamp();
 
         $timeframe_completed = [];
         $timeframe_in_progress = [];
@@ -388,7 +392,8 @@ class WP_101_Gutenberg_Blocks {
 
             // Check if completed items fall within timeframe
             if ($item['status'] === 'complete' && !empty($item['completion_date'])) {
-                $completion_time = strtotime($item['completion_date']);
+                $completion_dt = new DateTime($item['completion_date'], $timezone);
+                $completion_time = $completion_dt->getTimestamp();
                 if ($completion_time >= $start && $completion_time <= $end) {
                     $timeframe_completed[] = $item;
                 }
@@ -396,15 +401,20 @@ class WP_101_Gutenberg_Blocks {
 
             // Check if failed items fall within timeframe
             if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
-                $fail_time = strtotime($item['fail_date']);
+                $fail_dt = new DateTime($item['fail_date'], $timezone);
+                $fail_time = $fail_dt->getTimestamp();
                 if ($fail_time >= $start && $fail_time <= $end) {
                     $timeframe_failed[] = $item;
                 }
             }
 
-            // Include all in-progress items regardless of start date
-            if ($item['status'] === 'underway') {
-                $timeframe_in_progress[] = $item;
+            // Check if in-progress items fall within timeframe
+            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
+                $start_dt_item = new DateTime($item['start_date'], $timezone);
+                $start_time = $start_dt_item->getTimestamp();
+                if ($start_time >= $start && $start_time <= $end) {
+                    $timeframe_in_progress[] = $item;
+                }
             }
         }
 
@@ -463,8 +473,12 @@ class WP_101_Gutenberg_Blocks {
         }
 
         // Filter items by completion date within timeframe
-        $start = strtotime($start_date);
-        $end = strtotime($end_date);
+        // Use WordPress timezone for proper date comparisons
+        $timezone = wp_timezone();
+        $start_dt = new DateTime($start_date . ' 00:00:00', $timezone);
+        $end_dt = new DateTime($end_date . ' 23:59:59', $timezone);
+        $start = $start_dt->getTimestamp();
+        $end = $end_dt->getTimestamp();
 
         $timeframe_completed = [];
         $timeframe_in_progress = [];
@@ -494,7 +508,8 @@ class WP_101_Gutenberg_Blocks {
 
             // Check if completed items fall within timeframe
             if ($item['status'] === 'complete' && !empty($item['completion_date'])) {
-                $completion_time = strtotime($item['completion_date']);
+                $completion_dt = new DateTime($item['completion_date'], $timezone);
+                $completion_time = $completion_dt->getTimestamp();
                 if ($completion_time >= $start && $completion_time <= $end) {
                     $timeframe_completed[] = $item;
                 }
@@ -502,15 +517,20 @@ class WP_101_Gutenberg_Blocks {
 
             // Check if failed items fall within timeframe
             if ($item['status'] === 'failed' && !empty($item['fail_date'])) {
-                $fail_time = strtotime($item['fail_date']);
+                $fail_dt = new DateTime($item['fail_date'], $timezone);
+                $fail_time = $fail_dt->getTimestamp();
                 if ($fail_time >= $start && $fail_time <= $end) {
                     $timeframe_failed[] = $item;
                 }
             }
 
-            // Include all in-progress items regardless of start date
-            if ($item['status'] === 'underway') {
-                $timeframe_in_progress[] = $item;
+            // Check if in-progress items fall within timeframe
+            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
+                $start_dt_item = new DateTime($item['start_date'], $timezone);
+                $start_time = $start_dt_item->getTimestamp();
+                if ($start_time >= $start && $start_time <= $end) {
+                    $timeframe_in_progress[] = $item;
+                }
             }
         }
 
@@ -727,12 +747,32 @@ class WP_101_Gutenberg_Blocks {
     public static function ajax_generate_timeframe_report() {
         check_ajax_referer('wp_101_timeframe_report', 'nonce');
 
+        // Check user capabilities
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Insufficient permissions']);
+            return;
+        }
+
         $list_id = isset($_POST['listId']) ? intval($_POST['listId']) : 0;
         $start_date = isset($_POST['startDate']) ? sanitize_text_field($_POST['startDate']) : '';
         $end_date = isset($_POST['endDate']) ? sanitize_text_field($_POST['endDate']) : '';
 
         if (!$list_id || !$start_date || !$end_date) {
             wp_send_json_error(['message' => 'Missing required parameters']);
+            return;
+        }
+
+        // Validate date formats
+        $start_timestamp = strtotime($start_date);
+        $end_timestamp = strtotime($end_date);
+
+        if ($start_timestamp === false || $end_timestamp === false) {
+            wp_send_json_error(['message' => 'Invalid date format']);
+            return;
+        }
+
+        if ($start_timestamp > $end_timestamp) {
+            wp_send_json_error(['message' => 'Start date must be before end date']);
             return;
         }
 

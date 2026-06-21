@@ -191,6 +191,18 @@ class WP_101_Meta_Boxes {
     }
 
     /**
+     * Convert MySQL datetime to timestamp respecting WordPress timezone
+     */
+    private static function mysql_to_timestamp($mysql_date) {
+        if (empty($mysql_date)) {
+            return 0;
+        }
+        $timezone = wp_timezone();
+        $dt = new DateTime($mysql_date, $timezone);
+        return $dt->getTimestamp();
+    }
+
+    /**
      * Render a single item accordion
      */
     private static function render_item_accordion($index, $item = [], $disabled = false) {
@@ -366,7 +378,7 @@ class WP_101_Meta_Boxes {
                     <tr>
                         <th><label><?php _e('Start Date', '101-wp'); ?></label></th>
                         <td>
-                            <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item['start_date']))); ?>
+                            <?php echo esc_html(date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['start_date']))); ?>
                             <input type="hidden"
                                    name="wp_101_items[<?php echo esc_attr($index); ?>][start_date]"
                                    value="<?php echo esc_attr($item['start_date']); ?>" />
@@ -377,7 +389,7 @@ class WP_101_Meta_Boxes {
                     <tr>
                         <th><label><?php _e('Completion Date', '101-wp'); ?></label></th>
                         <td>
-                            <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item['completion_date']))); ?>
+                            <?php echo esc_html(date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['completion_date']))); ?>
                             <input type="hidden"
                                    name="wp_101_items[<?php echo esc_attr($index); ?>][completion_date]"
                                    value="<?php echo esc_attr($item['completion_date']); ?>" />
@@ -388,7 +400,7 @@ class WP_101_Meta_Boxes {
                     <tr>
                         <th><label><?php _e('Fail Date', '101-wp'); ?></label></th>
                         <td>
-                            <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item['fail_date']))); ?>
+                            <?php echo esc_html(date_i18n(get_option('date_format'), self::mysql_to_timestamp($item['fail_date']))); ?>
                             <input type="hidden"
                                    name="wp_101_items[<?php echo esc_attr($index); ?>][fail_date]"
                                    value="<?php echo esc_attr($item['fail_date']); ?>" />
@@ -427,7 +439,7 @@ class WP_101_Meta_Boxes {
                    class="widefat"
                    <?php echo $disabled_attr; ?> />
             <?php if (!empty($sub_item['date'])): ?>
-                <span class="wp-101-sub-item-date"><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($sub_item['date']))); ?></span>
+                <span class="wp-101-sub-item-date"><?php echo esc_html(date_i18n(get_option('date_format'), self::mysql_to_timestamp($sub_item['date']))); ?></span>
             <?php endif; ?>
             <input type="hidden"
                    name="wp_101_items[<?php echo esc_attr($item_index); ?>][sub_items][<?php echo esc_attr($sub_index); ?>][date]"

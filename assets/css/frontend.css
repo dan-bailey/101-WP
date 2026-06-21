@@ -120,6 +120,22 @@
     font-style: italic;
 }
 
+/* Started date */
+.wp-101-started-date {
+    margin-top: 10px;
+    font-size: 0.875em;
+    color: #2563eb;
+    font-style: italic;
+}
+
+/* Failed date */
+.wp-101-failed-date {
+    margin-top: 10px;
+    font-size: 0.875em;
+    color: #dc2626;
+    font-style: italic;
+}
+
 /* Status-specific styles */
 .wp-101-item.wp-101-status-complete {
     background: #f0fdf4;
