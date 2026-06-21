@@ -408,13 +408,9 @@ class WP_101_Gutenberg_Blocks {
                 }
             }
 
-            // Check if in-progress items fall within timeframe
-            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
-                $start_dt_item = new DateTime($item['start_date'], $timezone);
-                $start_time = $start_dt_item->getTimestamp();
-                if ($start_time >= $start && $start_time <= $end) {
-                    $timeframe_in_progress[] = $item;
-                }
+            // Include all in-progress items regardless of start date
+            if ($item['status'] === 'underway') {
+                $timeframe_in_progress[] = $item;
             }
         }
 
@@ -524,13 +520,9 @@ class WP_101_Gutenberg_Blocks {
                 }
             }
 
-            // Check if in-progress items fall within timeframe
-            if ($item['status'] === 'underway' && !empty($item['start_date'])) {
-                $start_dt_item = new DateTime($item['start_date'], $timezone);
-                $start_time = $start_dt_item->getTimestamp();
-                if ($start_time >= $start && $start_time <= $end) {
-                    $timeframe_in_progress[] = $item;
-                }
+            // Include all in-progress items regardless of start date
+            if ($item['status'] === 'underway') {
+                $timeframe_in_progress[] = $item;
             }
         }
 

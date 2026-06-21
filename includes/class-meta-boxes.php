@@ -602,9 +602,9 @@ class WP_101_Meta_Boxes {
                     'target_count' => $target_count_value,
                     'current_count' => intval($item['current_count'] ?? 0),
                     'sub_items' => [],
-                    'completion_date' => sanitize_text_field($item['completion_date'] ?? ''),
-                    'start_date' => sanitize_text_field($item['start_date'] ?? ''),
-                    'fail_date' => sanitize_text_field($item['fail_date'] ?? '')
+                    'completion_date' => sanitize_text_field($item['completion_date'] ?? $existing_item['completion_date'] ?? ''),
+                    'start_date' => sanitize_text_field($item['start_date'] ?? $existing_item['start_date'] ?? ''),
+                    'fail_date' => sanitize_text_field($item['fail_date'] ?? $existing_item['fail_date'] ?? '')
                 ];
 
                 // Skip items with empty titles
