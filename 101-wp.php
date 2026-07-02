@@ -3,7 +3,7 @@
  * Plugin Name: 101-WP
  * Plugin URI: https://danbailey.dev/projects/101-wp
  * Description: Manage your 101 Things in 1001 Days lists
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Dan Bailey
  * Author URI: https://danbailey.dev
  * License: GPL v2 or later
