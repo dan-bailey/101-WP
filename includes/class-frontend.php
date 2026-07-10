@@ -156,12 +156,7 @@ class WP_101_Frontend {
 
         $html .= '</div>'; // .wp-101-item-header
 
-        // Content
-        if (!empty($item['content'])) {
-            $html .= '<div class="wp-101-item-content">';
-            $html .= wpautop(wp_kses_post($item['content']));
-            $html .= '</div>';
-        }
+        
 
         // Detailed sub-items list
         if ($item['tracking_mode'] === 'detailed' && !empty($item['sub_items'])) {
@@ -183,6 +178,13 @@ class WP_101_Frontend {
                 $html .= '</li>';
             }
             $html .= '</ul>';
+        }
+
+        // Content
+        if (!empty($item['content'])) {
+            $html .= '<div class="wp-101-item-content">';
+            $html .= wpautop(wp_kses_post($item['content']));
+            $html .= '</div>';
         }
 
         // Completion date
